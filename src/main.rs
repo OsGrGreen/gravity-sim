@@ -1,0 +1,245 @@
+#[macro_use]
+extern crate glium;
+extern crate winit;
+use object::{point::WorldPoint, WorldObject};
+use rand::Rng;
+use glam::{Mat4, Vec2, Vec3};
+use util::{input_handler::InputHandler, ray_library::{distance_ray_point, ndc_to_direction, ndc_to_point}};
+use winit::{event::{MouseButton, MouseScrollDelta}, event_loop::{ControlFlow, EventLoop}, keyboard, window::{Fullscreen, Window}};
+use glium::{framebuffer::SimpleFrameBuffer, glutin::surface::WindowSurface, implement_vertex, index::PrimitiveType, texture::DepthTexture2d, uniforms::{MagnifySamplerFilter, MinifySamplerFilter}, Blend, BlendingFunction, Display, LinearBlendingFactor, Surface, Texture2d, VertexBuffer};
+use core::f32;
+use std::time::Instant;
+
+
+mod object;
+mod rendering;
+mod bezier_surface;
+use bezier_surface::GrassVertex;
+use rendering::{render::{Vertex, VertexSimple}, render_camera::RenderCamera, text::{format_to_exact_length, RenderedText, TextVbo}};
+
+
+mod util;
+
+
+#[derive(Copy, Clone, Debug)]
+pub struct Attr {
+    world_position: [f32; 3],
+    colour: [f32; 3],
+    tex_offsets: [f32;3], //x offset, y offset, scaling factor   For reading in texture atlas
+}
+implement_vertex!(Attr, world_position, colour, tex_offsets);
+
+impl Attr{
+    pub fn is_zero(&self) -> bool{
+        if self.colour == [0.0,0.0,0.0]{
+            return true
+        }else{
+            return false
+        }
+    }
+}
+
+fn init_window()-> (EventLoop<()>, Window, Display<WindowSurface>) {
+    let event_loop = winit::event_loop::EventLoopBuilder::new().build().expect("event loop building"); 
+    
+    event_loop.set_control_flow(ControlFlow::Poll);
+    let (window, display) = glium::backend::glutin::SimpleWindowBuilder::new().with_title("DD2258 project (Bezier surface)").build(&event_loop);
+    
+    (event_loop, window, display)
+}
+
+//Camera constants
+
+const CAMERA_SPEED:f32 = 2.0;
+const eps:f32 = 0.0001;
+
+const CONSTANT_FACTOR:f32 = 1.0;
+fn main() {
+
+    //The camera
+    let mut camera = RenderCamera::new(Vec3::new(0.0,0.5,4.5), Vec3::new(0.0,0.0,0.0), Vec3::new(0.0, 1.0, 0.0), Vec3::new(0.0,0.0,-1.0));
+
+    // Input handler
+    let mut input_handler = InputHandler::new();
+
+    //Set up camera matrix
+    camera.camera_matrix = camera.look_at(camera.get_pos()+camera.get_front());
+    //Create eventloop, window and display (where everything renders)
+    let (event_loop, window, display) = init_window();
+    //For manipulating the window
+    let monitor_handle = window.primary_monitor();
+
+    window.set_fullscreen(Some(Fullscreen::Borderless(monitor_handle)));
+
+
+
+
+    /*Loading the shaders from the files */
+    let low_res_vert = util::read_shader(include_bytes!(r"../shaders/resolution/vert.glsl"));
+    let low_res_frag = util::read_shader(include_bytes!(r"../shaders/resolution/frag.glsl"));
+
+
+    /*Draw paramters for the different renderers */
+    /*For example if a line or not */
+    /*If alpha is needed, and the depthtest */
+
+
+    //Read textures
+    
+        //Font textures
+        // Font chars are of size 12 x 6
+    let font_raw_image = image::load(std::io::Cursor::new(&include_bytes!(r"textures\standard_font.png")),
+    image::ImageFormat::Png).unwrap().to_rgba8();
+    let font_dimensions = font_raw_image.dimensions();
+    let font_image = glium::texture::RawImage2d::from_raw_rgba_reversed(&font_raw_image.into_raw(), font_dimensions);
+    let font_atlas = glium::texture::Texture2d::new(&display, font_image).unwrap();
+
+
+    /*The point that symbolises where the mouse is! */
+    let mut point = WorldPoint::new(0.5,Vec2::ZERO,Vec3::ZERO);
+
+    //Quad that covers the whole screen
+    let screen_quad:Vec<Vertex> = vec![
+            Vertex{position: [-1.0, -1.0, 0.0], normal: [0.0,0.0,0.0], tex_coords: [0.0, 0.0]}, 
+            Vertex{position: [1.0, -1.0, 0.0], normal: [0.0,0.0,0.0], tex_coords: [1.0, 0.0]},
+            Vertex{position: [1.0, 1.0, 0.0], normal: [0.0,0.0,0.0], tex_coords: [1.0, 1.0]},
+            Vertex{position: [-1.0, 1.0, 0.0], normal: [0.0,0.0,0.0], tex_coords: [0.0, 1.0]}
+    ];
+    
+    let quad_indicies = vec![0, 2, 1, 0, 2, 3];
+
+    //The different "renderers"
+    // Is basically a combination of VBO, IndexBuffer and Program
+    // Is a handy way to have everything in one place..
+    let low_res_renderer = rendering::render::Renderer::new(&screen_quad,&quad_indicies, Some(glium::index::PrimitiveType::TrianglesList), &low_res_vert, &low_res_frag, None, None, None, &display, None, None).unwrap();
+
+    camera.perspective = rendering::render::calculate_perspective(window.inner_size().into());
+    
+
+    /*Some random variables that are used through out the program */
+    let mut mouse_pos: Vec3 = Vec3::ZERO;
+    let mut t: f32 = 0.0;
+    let dt: f32 = 0.0167;
+    let mut prev_mouse_pos = Vec3::ZERO;
+    let mut current_time = Instant::now();
+    let mut accumulator: f32 = 0.0;
+    let mut ctrl_pressed = false;
+    let mut total_fps: usize = 0;
+    let mut timer = Instant::now();
+    let mut overall_fps = 0.0;
+    let mut rng = rand::rng();
+    let smoothing = 0.6;  //For fps
+    let mut frames:f32 = 0.0;
+
+
+    let _ = event_loop.run(move |event, window_target| {
+        let (world_texture, depth_world_texture) = create_render_textures(&display, 384, 216);
+        let mut fbo = create_fbo(&display, &world_texture, &depth_world_texture);
+        match event {
+            winit::event::Event::WindowEvent { event, .. } => match event {
+            winit::event::WindowEvent::CloseRequested => {
+                /*Window exit event */
+                println!("Average fps was: {}", total_fps/frames as usize);
+                window_target.exit()
+            },
+            winit::event::WindowEvent::CursorMoved { device_id: _, position } => {
+                /*Move cursor event */
+                prev_mouse_pos = mouse_pos;
+
+                /*Get mouse posistion in NDC */
+                mouse_pos = Vec3::new(
+                    (position.x as f32 / window.inner_size().width as f32) * 2.0 - 1.0,
+                    - ((position.y as f32 / window.inner_size().height as f32) * 2.0 - 1.0),
+                    1.0,
+                );
+                
+            }
+            winit::event::WindowEvent::MouseWheel { device_id: _, delta, phase } =>{
+                    match delta {
+                        MouseScrollDelta::LineDelta(x, y) => {
+                        }
+                        _ => {}
+                    }
+            }
+            winit::event::WindowEvent::MouseInput { device_id: _, state, button } =>{
+            }
+
+            // TODO
+            // Make input a little bit nicer
+            winit::event::WindowEvent::KeyboardInput { device_id: _, event, is_synthetic: _ } =>{
+                if event.physical_key == keyboard::KeyCode::Escape && event.state.is_pressed(){
+                    println!("Average fps was: {}", total_fps/frames as usize);
+                    window_target.exit()
+                } 
+                input_handler.update_input(event);
+
+                //Handle inputs ends
+
+            },
+            winit::event::WindowEvent::Resized(window_size) => {
+                camera.perspective = rendering::render::calculate_perspective(window_size.into());
+                display.resize(window_size.into());
+            },
+            winit::event::WindowEvent::RedrawRequested => {
+                //Physics step
+                let new_time = Instant::now();
+                let mut frame_time = current_time.elapsed().as_secs_f32() - new_time.elapsed().as_secs_f32();
+
+                if frame_time > 0.25{
+                    frame_time = 0.25;
+                }
+                current_time = new_time;
+
+                accumulator += frame_time;
+
+                while accumulator >= dt {
+
+                    t += dt;
+                    accumulator -= dt;
+                }
+                
+
+                //Render step
+
+                let delta_time = timer.elapsed().as_secs_f32();
+                timer = Instant::now();
+                let current = 1.0 / delta_time;
+                overall_fps = ((overall_fps * smoothing) + (current * (1.0-smoothing))).min(50_000.0);
+                total_fps += overall_fps as usize;       
+    
+                let mut target = display.draw();
+
+                fbo.clear_color_and_depth((0.0, 0.1, 1.0, 1.0), 1.0);
+                target.clear_color_and_depth((0.0, 0.1, 1.0, 1.0), 1.0);
+
+                target.draw(&low_res_renderer.vbo, &low_res_renderer.indicies,&low_res_renderer.program, &uniform! {tex: &world_texture}, &low_res_renderer.draw_params).unwrap();
+            
+                target.finish().unwrap();
+                frames = frames + 1.0;
+            },
+            _ => (),
+            },
+            winit::event::Event::AboutToWait => {
+                window.request_redraw();
+            },
+            _ => (),
+        };
+    });
+}
+
+
+/* Functions for creating the low-res image that I firstly render everything to */
+/* Is mostly for the aesthetic, but also gives us a few more frames to work with */
+fn create_render_textures(display: &Display<WindowSurface>, width: u32, height: u32) -> (Texture2d, DepthTexture2d) {
+    let color_texture = Texture2d::empty(display, width, height).unwrap();
+    let depth_texture = DepthTexture2d::empty(display, width, height).unwrap();
+    (color_texture, depth_texture)
+}
+
+fn create_fbo<'a>(
+    display: &'a Display<WindowSurface>,
+    color_texture: &'a Texture2d,
+    depth_texture: &'a DepthTexture2d,
+) -> SimpleFrameBuffer<'a> {
+    SimpleFrameBuffer::with_depth_buffer(display, color_texture, depth_texture).unwrap()
+}
