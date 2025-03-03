@@ -1,25 +1,26 @@
 use glam::{Mat4, Vec3};
 pub mod point;
+pub mod renderobjects;
 
 #[derive(Copy, Clone,Debug)]
-pub struct WorldObject{
-    scaling: Mat4,
+pub struct ModelObject{
     rotation: Mat4,
+    scaling: Mat4,
     translation: Mat4,
     pub velocity: Vec3,
 }
 
-impl WorldObject{
-    pub fn new() -> WorldObject{
-        WorldObject{
+impl ModelObject{
+    pub fn new() -> ModelObject{
+        ModelObject{
             scaling: Mat4::IDENTITY,
             rotation: Mat4::IDENTITY,
             translation: Mat4::IDENTITY,
             velocity: Vec3::new(0.0, -2.0, 0.0),
         }
     }
-    pub fn new_from_pos(initial_pos: Vec3) -> WorldObject{
-        WorldObject{
+    pub fn new_from_pos(initial_pos: Vec3) -> ModelObject{
+        ModelObject{
             scaling: Mat4::IDENTITY,
             rotation: Mat4::IDENTITY,
             translation: Mat4::from_translation(initial_pos),

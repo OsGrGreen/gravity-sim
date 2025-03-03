@@ -8,6 +8,8 @@ use winit::window::Window; */
 use glam::Mat4;
 use glium::{glutin::surface::WindowSurface, program::TransformFeedbackMode, uniforms::{AsUniformValue, Uniforms, UniformsStorage}, Display, DrawParameters, Frame, Program, Surface, VertexBuffer};
 
+use crate::util::{read_model, read_shader};
+
 use super::{text::RenderedText};
 
 #[derive(Copy, Clone,Debug)]
@@ -94,6 +96,33 @@ impl <'b>Renderer<'b>{
                     used_inds: 0,
                 })
             }
+        }
+
+        pub fn init<'a>(display: &Display<WindowSurface>, vertex_data: &[u8], fragment_data: &[u8], obj_data: &[u8]) -> Result<Renderer<'b>, &'a str>{
+            let vertex_shader = read_shader(vertex_data);
+            let fragment_shader = read_shader(fragment_data);
+            let (vertecies, indices) = read_model(obj_data);
+            let vbo = glium::VertexBuffer::new(display, &vertecies).unwrap();
+            let indicies = glium::IndexBuffer::new(display,glium::index::PrimitiveType::TrianglesList,&indices).unwrap();
+            let program = glium::Program::from_source(display, vertex_shader, fragment_shader, None).unwrap();
+
+            Ok(Renderer{
+                vbo: vbo.into(),
+                indicies: indicies,
+                program: program,
+                is_dynamic: false,
+                draw_params: glium::DrawParameters {
+                    depth: glium::Depth {
+                        test: glium::DepthTest::IfLess,
+                        write: true,
+                        .. Default::default()
+                    },
+                    .. Default::default()
+                },
+                used_vbo: 0,
+                used_inds: 0,
+            })
+        
         }
 
         pub fn new_dynamic<'a>(shape: Vec<Vertex>, inds: Vec<u16>, prim_type: Option<glium::index::PrimitiveType> ,vert_shader: &'a str, frag_shader: &'a str, geo_shader: Option<&'a str>, disp: &Display<WindowSurface>, params: Option<DrawParameters<'b>>) -> Result<Renderer<'b>, &'a str>{

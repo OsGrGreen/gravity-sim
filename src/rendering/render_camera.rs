@@ -1,5 +1,8 @@
 
 use glam::{Mat4, Vec3, Vec4};
+use winit::window::Window;
+
+use super::render::calculate_perspective;
 
 
 pub struct RenderCamera{
@@ -19,6 +22,13 @@ impl RenderCamera{
     pub fn new(start_pos: Vec3, target:Vec3, up:Vec3, front:Vec3) -> RenderCamera{
 
         RenderCamera{camera_pos:start_pos, camera_prev_pos:start_pos,camera_target:target,camera_up:up, camera_front:front, perspective:Mat4::ZERO, camera_matrix: Mat4::ZERO}
+    }
+
+    pub fn init(window: &Window) -> RenderCamera{
+        let mut camera = RenderCamera{camera_pos:Vec3::ZERO, camera_prev_pos:Vec3::ZERO,camera_target:Vec3::new(0.0, 0.0, -2.0),camera_up:Vec3::new(0.0, 1.0, 0.0), camera_front:Vec3::new(0.0, 0.0, -1.0), perspective:Mat4::ZERO, camera_matrix: Mat4::ZERO};
+        camera.camera_matrix = camera.look_at(camera.get_pos()+camera.get_front());
+        camera.perspective = calculate_perspective(window.inner_size().into());
+        return camera;
     }
 
     pub fn get_pos(&self) -> Vec3{

@@ -1,20 +1,18 @@
 #[macro_use]
 extern crate glium;
 extern crate winit;
-use object::{point::WorldPoint, WorldObject};
+
 use rand::Rng;
 use glam::{Mat4, Vec2, Vec3};
-use util::{input_handler::InputHandler, ray_library::{distance_ray_point, ndc_to_direction, ndc_to_point}};
+use scene::{objects::renderable::{point::WorldPoint}, Scene};
+use util::{input_handler::InputHandler, load_icon, ray_library::{distance_ray_point, ndc_to_direction, ndc_to_point}, read_model};
 use winit::{event::{MouseButton, MouseScrollDelta}, event_loop::{ControlFlow, EventLoop}, keyboard, window::{Fullscreen, Window}};
 use glium::{framebuffer::SimpleFrameBuffer, glutin::surface::WindowSurface, implement_vertex, index::PrimitiveType, texture::DepthTexture2d, uniforms::{MagnifySamplerFilter, MinifySamplerFilter}, Blend, BlendingFunction, Display, LinearBlendingFactor, Surface, Texture2d, VertexBuffer};
 use core::f32;
 use std::time::Instant;
 
-
-mod object;
+mod scene;
 mod rendering;
-mod bezier_surface;
-use bezier_surface::GrassVertex;
 use rendering::{render::{Vertex, VertexSimple}, render_camera::RenderCamera, text::{format_to_exact_length, RenderedText, TextVbo}};
 
 
@@ -43,19 +41,18 @@ fn init_window()-> (EventLoop<()>, Window, Display<WindowSurface>) {
     let event_loop = winit::event_loop::EventLoopBuilder::new().build().expect("event loop building"); 
     
     event_loop.set_control_flow(ControlFlow::Poll);
-    let (window, display) = glium::backend::glutin::SimpleWindowBuilder::new().with_title("DD2258 project (Bezier surface)").build(&event_loop);
+    let (window, display) = glium::backend::glutin::SimpleWindowBuilder::new().with_title("Gravity Simulator").build(&event_loop);
     
     (event_loop, window, display)
 }
 
 //Camera constants
 
-const CAMERA_SPEED:f32 = 2.0;
+const CAMERA_SPEED:f32 = 0.5;
 const eps:f32 = 0.0001;
 
 const CONSTANT_FACTOR:f32 = 1.0;
 fn main() {
-
     //The camera
     let mut camera = RenderCamera::new(Vec3::new(0.0,0.5,4.5), Vec3::new(0.0,0.0,0.0), Vec3::new(0.0, 1.0, 0.0), Vec3::new(0.0,0.0,-1.0));
 
@@ -68,8 +65,8 @@ fn main() {
     let (event_loop, window, display) = init_window();
     //For manipulating the window
     let monitor_handle = window.primary_monitor();
-
-    window.set_fullscreen(Some(Fullscreen::Borderless(monitor_handle)));
+    window.set_window_icon(Some(load_icon(include_bytes!(r"../textures/icon.png"))));
+    //window.set_fullscreen(Some(Fullscreen::Borderless(monitor_handle)));
 
 
 
@@ -77,7 +74,6 @@ fn main() {
     /*Loading the shaders from the files */
     let low_res_vert = util::read_shader(include_bytes!(r"../shaders/resolution/vert.glsl"));
     let low_res_frag = util::read_shader(include_bytes!(r"../shaders/resolution/frag.glsl"));
-
 
     /*Draw paramters for the different renderers */
     /*For example if a line or not */
@@ -88,7 +84,7 @@ fn main() {
     
         //Font textures
         // Font chars are of size 12 x 6
-    let font_raw_image = image::load(std::io::Cursor::new(&include_bytes!(r"textures\standard_font.png")),
+    let font_raw_image = image::load(std::io::Cursor::new(&include_bytes!(r"../textures/standard_font.png")),
     image::ImageFormat::Png).unwrap().to_rgba8();
     let font_dimensions = font_raw_image.dimensions();
     let font_image = glium::texture::RawImage2d::from_raw_rgba_reversed(&font_raw_image.into_raw(), font_dimensions);
@@ -131,10 +127,15 @@ fn main() {
     let smoothing = 0.6;  //For fps
     let mut frames:f32 = 0.0;
 
-
+    let (mut world_texture, mut depth_world_texture) = create_render_textures(&display, window.inner_size().width/2, window.inner_size().height/2);
+    //let mut world_obj = WorldObject::new(Renderable::new(), PhysicsObject::new());
+    
+    //world_obj.render_object.set_size(0.1);
+    //world_obj.render_object.translate(Vec3 { x: 0.0, y: 0.0, z: -2.0 });
+    let mut scene_test = Scene::new(RenderCamera::init(&window), None);
+    scene_test.new_object("Suzanne", &display, include_bytes!(r"../shaders/line_vert.glsl"),include_bytes!(r"../shaders/line_frag.glsl"), include_bytes!(r"../objects/Suzanne.obj"));
+    //scene_test.new_object(render_name, &display, vertex_data, fragment_data, obj_data)
     let _ = event_loop.run(move |event, window_target| {
-        let (world_texture, depth_world_texture) = create_render_textures(&display, 384, 216);
-        let mut fbo = create_fbo(&display, &world_texture, &depth_world_texture);
         match event {
             winit::event::Event::WindowEvent { event, .. } => match event {
             winit::event::WindowEvent::CloseRequested => {
@@ -179,6 +180,7 @@ fn main() {
             winit::event::WindowEvent::Resized(window_size) => {
                 camera.perspective = rendering::render::calculate_perspective(window_size.into());
                 display.resize(window_size.into());
+                (world_texture,depth_world_texture) = create_render_textures(&display, window.inner_size().width/2, window.inner_size().height/2);
             },
             winit::event::WindowEvent::RedrawRequested => {
                 //Physics step
@@ -192,28 +194,30 @@ fn main() {
 
                 accumulator += frame_time;
 
-                while accumulator >= dt {
-
+                while accumulator >= dt {   
+                    scene_test.update_physics(dt);
                     t += dt;
                     accumulator -= dt;
                 }
                 
 
                 //Render step
-
                 let delta_time = timer.elapsed().as_secs_f32();
                 timer = Instant::now();
                 let current = 1.0 / delta_time;
                 overall_fps = ((overall_fps * smoothing) + (current * (1.0-smoothing))).min(50_000.0);
                 total_fps += overall_fps as usize;       
-    
+                
                 let mut target = display.draw();
+                let mut fbo = create_fbo(&display, &world_texture, &depth_world_texture);
+                fbo.clear_color_and_depth((0.05, 0.05, 0.14, 1.0), 1.0);
 
-                fbo.clear_color_and_depth((0.0, 0.1, 1.0, 1.0), 1.0);
-                target.clear_color_and_depth((0.0, 0.1, 1.0, 1.0), 1.0);
 
+                scene_test.draw(&mut fbo);
+
+                target.clear_color_and_depth((0.3, 0.6, 0.1, 1.0), 1.0);
                 target.draw(&low_res_renderer.vbo, &low_res_renderer.indicies,&low_res_renderer.program, &uniform! {tex: &world_texture}, &low_res_renderer.draw_params).unwrap();
-            
+                
                 target.finish().unwrap();
                 frames = frames + 1.0;
             },
