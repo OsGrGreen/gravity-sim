@@ -7,7 +7,6 @@ pub struct ModelObject{
     rotation: Mat4,
     scaling: Mat4,
     translation: Mat4,
-    pub velocity: Vec3,
 }
 
 impl ModelObject{
@@ -16,7 +15,6 @@ impl ModelObject{
             scaling: Mat4::IDENTITY,
             rotation: Mat4::IDENTITY,
             translation: Mat4::IDENTITY,
-            velocity: Vec3::new(0.0, -2.0, 0.0),
         }
     }
     pub fn new_from_pos(initial_pos: Vec3) -> ModelObject{
@@ -24,7 +22,6 @@ impl ModelObject{
             scaling: Mat4::IDENTITY,
             rotation: Mat4::IDENTITY,
             translation: Mat4::from_translation(initial_pos),
-            velocity: Vec3::new(0.0, -2.0, 0.0),
         }
     }
 

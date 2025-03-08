@@ -1,5 +1,5 @@
 
-use glam::{Mat4, Vec3, Vec4};
+use glam::{Mat4, Vec3, Vec4, Vec4Swizzles};
 use winit::window::Window;
 
 use super::render::calculate_perspective;
@@ -7,7 +7,6 @@ use super::render::calculate_perspective;
 
 pub struct RenderCamera{
     camera_pos: Vec3,
-    camera_prev_pos: Vec3,
     camera_target: Vec3,
     camera_up: Vec3,
     camera_front: Vec3,
@@ -19,27 +18,37 @@ const SQRT3:f32 = 1.7320508;
 
 impl RenderCamera{
 
-    pub fn new(start_pos: Vec3, target:Vec3, up:Vec3, front:Vec3) -> RenderCamera{
+    pub fn new(start_pos: Vec3, target:Vec3, up:Vec3, front:Vec3, dim: (f32, f32)) -> RenderCamera{
 
-        RenderCamera{camera_pos:start_pos, camera_prev_pos:start_pos,camera_target:target,camera_up:up, camera_front:front, perspective:Mat4::ZERO, camera_matrix: Mat4::ZERO}
+        let mut camera = RenderCamera{camera_pos:start_pos,camera_target:target,camera_up:up, camera_front:front, perspective:Mat4::ZERO, camera_matrix: Mat4::ZERO};
+        camera.camera_matrix = camera.look_at();
+        camera.perspective = calculate_perspective(dim);
+        return camera;
     }
 
-    pub fn init(window: &Window) -> RenderCamera{
-        let mut camera = RenderCamera{camera_pos:Vec3::ZERO, camera_prev_pos:Vec3::ZERO,camera_target:Vec3::new(0.0, 0.0, -2.0),camera_up:Vec3::new(0.0, 1.0, 0.0), camera_front:Vec3::new(0.0, 0.0, -1.0), perspective:Mat4::ZERO, camera_matrix: Mat4::ZERO};
-        camera.camera_matrix = camera.look_at(camera.get_pos()+camera.get_front());
-        camera.perspective = calculate_perspective(window.inner_size().into());
+    pub fn init(dim: (f32, f32)) -> RenderCamera{
+        let mut camera = RenderCamera{camera_pos:Vec3::ZERO,camera_target:Vec3::new(0.0, 0.0, -2.0),camera_up:Vec3::new(0.0, 1.0, 0.0), camera_front:Vec3::new(0.0, 0.0, -1.0), perspective:Mat4::ZERO, camera_matrix: Mat4::ZERO};
+        camera.camera_matrix = camera.look_at();
+        camera.perspective = calculate_perspective(dim);
         return camera;
+    }
+
+    pub fn update(&mut self, rot: Mat4){
+        println!("pos before  {}", self.camera_pos);
+        println!("Target is {}", self.camera_target);
+        let rotated_pos = rot*Vec4::new(self.get_pos().x, self.get_pos().y, self.get_pos().z, 1.0);
+        self.set_pos(rotated_pos.xyz() / rotated_pos.w);
+        self.camera_matrix = self.look_at();
+        self.camera_front = (self.camera_target-self.camera_pos).normalize();
+        println!("pos after {}", self.camera_pos);
+    }
+
+    pub fn get_right(&self) -> Vec3{
+        return self.camera_front.cross(self.camera_up).normalize();
     }
 
     pub fn get_pos(&self) -> Vec3{
         return self.camera_pos
-    }
-
-    pub fn get_movement_delta(&mut self) -> Vec3{
-        let delta = self.camera_prev_pos - self.camera_pos;
-        self.camera_prev_pos = self.camera_pos;
-        
-        return delta
     }
 
     pub fn get_up(&self) -> Vec3{
@@ -63,8 +72,9 @@ impl RenderCamera{
         self.camera_pos[1] = y;
     }
 
-    pub fn r#set_move(&mut self, pos:Vec3){
+    pub fn set_pos(&mut self, pos:Vec3){
         self.camera_pos = pos;
+        self.camera_matrix = self.look_at();
     }
 
     pub fn r#move(&mut self, direction:Vec3){
@@ -79,8 +89,8 @@ impl RenderCamera{
         self.camera_target = new_target;
     }
 
-    pub fn look_at(&self, target: Vec3) -> Mat4{
-        let f = (target-self.camera_pos).normalize();
+    pub fn look_at(&self) -> Mat4{
+        let f = (self.camera_target-self.camera_pos).normalize();
         let mut u = self.camera_up.normalize();
         let s = (f.cross(u)).normalize();
         u = s.cross(f);

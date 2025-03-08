@@ -4,16 +4,16 @@ extern crate winit;
 
 use rand::Rng;
 use glam::{Mat4, Vec2, Vec3};
-use scene::{objects::renderable::{point::WorldPoint}, Scene};
+use scene::{objects::{physics::physics_object_factory, renderable::{point::WorldPoint, renderobjects::RenderObject}, WorldObject}, Scene};
 use util::{input_handler::InputHandler, load_icon, ray_library::{distance_ray_point, ndc_to_direction, ndc_to_point}, read_model};
 use winit::{event::{MouseButton, MouseScrollDelta}, event_loop::{ControlFlow, EventLoop}, keyboard, window::{Fullscreen, Window}};
 use glium::{framebuffer::SimpleFrameBuffer, glutin::surface::WindowSurface, implement_vertex, index::PrimitiveType, texture::DepthTexture2d, uniforms::{MagnifySamplerFilter, MinifySamplerFilter}, Blend, BlendingFunction, Display, LinearBlendingFactor, Surface, Texture2d, VertexBuffer};
 use core::f32;
-use std::time::Instant;
+use std::{collections::HashMap, time::Instant};
 
 mod scene;
 mod rendering;
-use rendering::{render::{Vertex, VertexSimple}, render_camera::RenderCamera, text::{format_to_exact_length, RenderedText, TextVbo}};
+use rendering::{render::{Renderer, Vertex, VertexSimple}, render_camera::RenderCamera, text::{format_to_exact_length, RenderedText, TextVbo}};
 
 
 mod util;
@@ -53,21 +53,21 @@ const eps:f32 = 0.0001;
 
 const CONSTANT_FACTOR:f32 = 1.0;
 fn main() {
-    //The camera
-    let mut camera = RenderCamera::new(Vec3::new(0.0,0.5,4.5), Vec3::new(0.0,0.0,0.0), Vec3::new(0.0, 1.0, 0.0), Vec3::new(0.0,0.0,-1.0));
+
 
     // Input handler
     let mut input_handler = InputHandler::new();
 
     //Set up camera matrix
-    camera.camera_matrix = camera.look_at(camera.get_pos()+camera.get_front());
+    //camera.camera_matrix = camera.look_at(camera.get_pos()+camera.get_front());
     //Create eventloop, window and display (where everything renders)
     let (event_loop, window, display) = init_window();
     //For manipulating the window
     let monitor_handle = window.primary_monitor();
     window.set_window_icon(Some(load_icon(include_bytes!(r"../textures/icon.png"))));
-    //window.set_fullscreen(Some(Fullscreen::Borderless(monitor_handle)));
-
+    window.set_fullscreen(Some(Fullscreen::Borderless(monitor_handle)));
+    //The camera
+    let mut camera = RenderCamera::new(Vec3::new(0.0,0.5,4.5), Vec3::new(0.0,0.0,0.0), Vec3::new(0.0, 1.0, 0.0), Vec3::new(0.0,0.0,-1.0), window.inner_size().into());
 
 
 
@@ -113,13 +113,10 @@ fn main() {
     
 
     /*Some random variables that are used through out the program */
-    let mut mouse_pos: Vec3 = Vec3::ZERO;
     let mut t: f32 = 0.0;
     let dt: f32 = 0.0167;
-    let mut prev_mouse_pos = Vec3::ZERO;
     let mut current_time = Instant::now();
     let mut accumulator: f32 = 0.0;
-    let mut ctrl_pressed = false;
     let mut total_fps: usize = 0;
     let mut timer = Instant::now();
     let mut overall_fps = 0.0;
@@ -132,8 +129,8 @@ fn main() {
     
     //world_obj.render_object.set_size(0.1);
     //world_obj.render_object.translate(Vec3 { x: 0.0, y: 0.0, z: -2.0 });
-    let mut scene_test = Scene::new(RenderCamera::init(&window), None);
-    scene_test.new_object("Suzanne", &display, include_bytes!(r"../shaders/line_vert.glsl"),include_bytes!(r"../shaders/line_frag.glsl"), include_bytes!(r"../objects/Suzanne.obj"));
+
+    let mut return_scene = Scene::init_gravity_scene(&window, &display);
     //scene_test.new_object(render_name, &display, vertex_data, fragment_data, obj_data)
     let _ = event_loop.run(move |event, window_target| {
         match event {
@@ -144,16 +141,8 @@ fn main() {
                 window_target.exit()
             },
             winit::event::WindowEvent::CursorMoved { device_id: _, position } => {
-                /*Move cursor event */
-                prev_mouse_pos = mouse_pos;
-
-                /*Get mouse posistion in NDC */
-                mouse_pos = Vec3::new(
-                    (position.x as f32 / window.inner_size().width as f32) * 2.0 - 1.0,
-                    - ((position.y as f32 / window.inner_size().height as f32) * 2.0 - 1.0),
-                    1.0,
-                );
-                
+                println!("Moved mouse!");
+                input_handler.update_mouse(position, &window.inner_size());
             }
             winit::event::WindowEvent::MouseWheel { device_id: _, delta, phase } =>{
                     match delta {
@@ -163,6 +152,7 @@ fn main() {
                     }
             }
             winit::event::WindowEvent::MouseInput { device_id: _, state, button } =>{
+
             }
 
             // TODO
@@ -183,6 +173,8 @@ fn main() {
                 (world_texture,depth_world_texture) = create_render_textures(&display, window.inner_size().width/2, window.inner_size().height/2);
             },
             winit::event::WindowEvent::RedrawRequested => {
+                println!();
+                let mainTimer = Instant::now();
                 //Physics step
                 let new_time = Instant::now();
                 let mut frame_time = current_time.elapsed().as_secs_f32() - new_time.elapsed().as_secs_f32();
@@ -194,8 +186,11 @@ fn main() {
 
                 accumulator += frame_time;
 
-                while accumulator >= dt {   
-                    scene_test.update_physics(dt);
+                while accumulator >= dt {
+                    let physicsTimer = Instant::now();
+                    return_scene.update_physics(dt);
+                    return_scene.update_camera(dt, &input_handler);
+                    println!("Physics: {:.2?}", physicsTimer.elapsed());
                     t += dt;
                     accumulator -= dt;
                 }
@@ -207,19 +202,23 @@ fn main() {
                 let current = 1.0 / delta_time;
                 overall_fps = ((overall_fps * smoothing) + (current * (1.0-smoothing))).min(50_000.0);
                 total_fps += overall_fps as usize;       
-                
+                let mut drawTimer = Instant::now();
                 let mut target = display.draw();
                 let mut fbo = create_fbo(&display, &world_texture, &depth_world_texture);
                 fbo.clear_color_and_depth((0.05, 0.05, 0.14, 1.0), 1.0);
-
-
-                scene_test.draw(&mut fbo);
-
+                println!("After fbo creation: {:.2?}", drawTimer.elapsed());
+                drawTimer = Instant::now();
+                return_scene.draw(&mut fbo);
+                println!("Draw scene: {:.2?}", drawTimer.elapsed());
+                drawTimer = Instant::now();
                 target.clear_color_and_depth((0.3, 0.6, 0.1, 1.0), 1.0);
                 target.draw(&low_res_renderer.vbo, &low_res_renderer.indicies,&low_res_renderer.program, &uniform! {tex: &world_texture}, &low_res_renderer.draw_params).unwrap();
-                
+                println!("Draw to screen: {:.2?}", drawTimer.elapsed());
                 target.finish().unwrap();
+                println!("Finish: {:.2?}", drawTimer.elapsed());
                 frames = frames + 1.0;
+                println!("After main: {:.2?}", mainTimer.elapsed());
+                println!();
             },
             _ => (),
             },

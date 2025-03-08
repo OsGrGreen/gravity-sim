@@ -1,5 +1,7 @@
 use std::{fs, str};
 use std::fs::File;
+use glium::glutin::surface::WindowSurface;
+use glium::{Display, Texture2d};
 use winit::window::Icon;
 
 use crate::rendering::render::Vertex;
@@ -83,6 +85,8 @@ pub fn read_model(buf: &[u8]) -> (Vec<Vertex>, Vec<u16>){
         }
 
     }
+    println!("Vertex list is: {:?}", vertex_list);
+    println!("Index list is: {:?}", index_list);
     return (vertex_list, index_list)
 }
 
@@ -109,4 +113,12 @@ pub fn load_icon(bytes: &[u8]) -> Icon {
         (rgba, width, height)
     };
     Icon::from_rgba(icon_rgba, icon_width, icon_height).expect("Failed to open icon")
+}
+
+pub fn load_texture(display: &Display<WindowSurface>, bytes: &[u8]) -> Texture2d{
+    let buffer = image::load(std::io::Cursor::new(bytes),
+    image::ImageFormat::Png).unwrap().to_rgba8();
+    let dimensions = buffer.dimensions();
+    let raw_img = glium::texture::RawImage2d::from_raw_rgba_reversed(&buffer.into_raw(), dimensions);
+    glium::texture::Texture2d::new(display, raw_img).unwrap()
 }

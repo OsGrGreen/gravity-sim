@@ -1,21 +1,42 @@
 use std::collections::{hash_set::Iter, HashSet};
 
 use glam::Vec2;
-use winit::{event::{KeyEvent}, keyboard::{self, PhysicalKey}};
+use winit::{dpi::{PhysicalPosition, PhysicalSize}, event::KeyEvent, keyboard::{self, PhysicalKey}};
 
 pub struct InputHandler{
     movement: Vec2,
     pressed_keys: HashSet<PhysicalKey>, //Maybe make into a map and it has to be processed before it is removed...
+    mouse_pos: Vec2,
+    mouse_delta: Vec2,
 }
 
 impl InputHandler{
-
-
     pub fn new() -> InputHandler{
         InputHandler{
             movement: Vec2::ZERO,
             pressed_keys: HashSet::new(),
+            mouse_pos: Vec2::ZERO,
+            mouse_delta: Vec2::ZERO,
         }
+    }
+
+    pub fn update_mouse(&mut self, new_pos: PhysicalPosition<f64>, size: &PhysicalSize<u32>){
+        let pos = Self::convert_to_ndc(new_pos, size);
+        self.mouse_delta = self.mouse_pos-pos;
+        self.mouse_pos = pos;
+    }
+
+    fn convert_to_ndc(pos: PhysicalPosition<f64>, size: &PhysicalSize<u32>) -> Vec2{
+        Vec2::new((pos.x as f32 / size.width as f32) * 2.0 - 1.0,
+        - ((pos.y as f32 / size.height as f32) * 2.0 - 1.0))
+    }
+
+    pub fn pos(&self) -> Vec2{
+        self.mouse_pos
+    }
+
+    pub fn delta(&self) -> Vec2{
+        self.mouse_delta
     }
 
     pub fn get_movement(&self) -> Vec2{
@@ -24,6 +45,10 @@ impl InputHandler{
 
     pub fn get_pressed(&self) -> Iter<PhysicalKey>{
         return self.pressed_keys.iter();
+    }
+
+    pub fn is_pressed(&self, key: &PhysicalKey) -> bool{
+        self.pressed_keys.contains(key)
     }
 
     pub fn remove_pressed(&mut self, remove_key: &PhysicalKey){
