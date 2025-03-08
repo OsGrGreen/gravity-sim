@@ -5,7 +5,7 @@ extern crate winit;
 use rand::Rng;
 use glam::{Mat4, Vec2, Vec3};
 use scene::{objects::{physics::physics_object_factory, renderable::{point::WorldPoint, renderobjects::RenderObject}, WorldObject}, Scene};
-use util::{input_handler::InputHandler, load_icon, ray_library::{distance_ray_point, ndc_to_direction, ndc_to_point}, read_model};
+use util::{create_fbo, create_render_textures, input_handler::InputHandler, load_icon, ray_library::{distance_ray_point, ndc_to_direction, ndc_to_point}, read_model};
 use winit::{event::{MouseButton, MouseScrollDelta}, event_loop::{ControlFlow, EventLoop}, keyboard, window::{Fullscreen, Window}};
 use glium::{framebuffer::SimpleFrameBuffer, glutin::surface::WindowSurface, implement_vertex, index::PrimitiveType, texture::DepthTexture2d, uniforms::{MagnifySamplerFilter, MinifySamplerFilter}, Blend, BlendingFunction, Display, LinearBlendingFactor, Surface, Texture2d, VertexBuffer};
 use core::f32;
@@ -124,13 +124,9 @@ fn main() {
     let smoothing = 0.6;  //For fps
     let mut frames:f32 = 0.0;
 
-    let (mut world_texture, mut depth_world_texture) = create_render_textures(&display, window.inner_size().width/2, window.inner_size().height/2);
-    //let mut world_obj = WorldObject::new(Renderable::new(), PhysicsObject::new());
-    
-    //world_obj.render_object.set_size(0.1);
-    //world_obj.render_object.translate(Vec3 { x: 0.0, y: 0.0, z: -2.0 });
 
-    let mut return_scene = Scene::init_gravity_scene(&window, &display);
+
+    let mut return_scene = Scene::init_gravity_scene(&window, &display, (window.inner_size().width/1, window.inner_size().height/1));
     //scene_test.new_object(render_name, &display, vertex_data, fragment_data, obj_data)
     let _ = event_loop.run(move |event, window_target| {
         match event {
@@ -170,7 +166,6 @@ fn main() {
             winit::event::WindowEvent::Resized(window_size) => {
                 camera.perspective = rendering::render::calculate_perspective(window_size.into());
                 display.resize(window_size.into());
-                (world_texture,depth_world_texture) = create_render_textures(&display, window.inner_size().width/2, window.inner_size().height/2);
             },
             winit::event::WindowEvent::RedrawRequested => {
                 println!();
@@ -204,15 +199,14 @@ fn main() {
                 total_fps += overall_fps as usize;       
                 let mut drawTimer = Instant::now();
                 let mut target = display.draw();
-                let mut fbo = create_fbo(&display, &world_texture, &depth_world_texture);
-                fbo.clear_color_and_depth((0.05, 0.05, 0.14, 1.0), 1.0);
+                
                 println!("After fbo creation: {:.2?}", drawTimer.elapsed());
                 drawTimer = Instant::now();
-                return_scene.draw(&mut fbo);
+                return_scene.draw(&display);
                 println!("Draw scene: {:.2?}", drawTimer.elapsed());
                 drawTimer = Instant::now();
                 target.clear_color_and_depth((0.3, 0.6, 0.1, 1.0), 1.0);
-                target.draw(&low_res_renderer.vbo, &low_res_renderer.indicies,&low_res_renderer.program, &uniform! {tex: &world_texture}, &low_res_renderer.draw_params).unwrap();
+                target.draw(&low_res_renderer.vbo, &low_res_renderer.indicies,&low_res_renderer.program, &uniform! {tex: &return_scene.scene_tex}, &low_res_renderer.draw_params).unwrap();
                 println!("Draw to screen: {:.2?}", drawTimer.elapsed());
                 target.finish().unwrap();
                 println!("Finish: {:.2?}", drawTimer.elapsed());
@@ -231,18 +225,3 @@ fn main() {
 }
 
 
-/* Functions for creating the low-res image that I firstly render everything to */
-/* Is mostly for the aesthetic, but also gives us a few more frames to work with */
-fn create_render_textures(display: &Display<WindowSurface>, width: u32, height: u32) -> (Texture2d, DepthTexture2d) {
-    let color_texture = Texture2d::empty(display, width, height).unwrap();
-    let depth_texture = DepthTexture2d::empty(display, width, height).unwrap();
-    (color_texture, depth_texture)
-}
-
-fn create_fbo<'a>(
-    display: &'a Display<WindowSurface>,
-    color_texture: &'a Texture2d,
-    depth_texture: &'a DepthTexture2d,
-) -> SimpleFrameBuffer<'a> {
-    SimpleFrameBuffer::with_depth_buffer(display, color_texture, depth_texture).unwrap()
-}

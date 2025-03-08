@@ -1,6 +1,8 @@
 use std::{fs, str};
 use std::fs::File;
+use glium::framebuffer::SimpleFrameBuffer;
 use glium::glutin::surface::WindowSurface;
+use glium::texture::DepthTexture2d;
 use glium::{Display, Texture2d};
 use winit::window::Icon;
 
@@ -121,4 +123,20 @@ pub fn load_texture(display: &Display<WindowSurface>, bytes: &[u8]) -> Texture2d
     let dimensions = buffer.dimensions();
     let raw_img = glium::texture::RawImage2d::from_raw_rgba_reversed(&buffer.into_raw(), dimensions);
     glium::texture::Texture2d::new(display, raw_img).unwrap()
+}
+
+/* Functions for creating the low-res image that I firstly render everything to */
+/* Is mostly for the aesthetic, but also gives us a few more frames to work with */
+pub fn create_render_textures(display: &Display<WindowSurface>, width: u32, height: u32) -> (Texture2d, DepthTexture2d) {
+    let color_texture = Texture2d::empty(display, width, height).unwrap();
+    let depth_texture = DepthTexture2d::empty(display, width, height).unwrap();
+    (color_texture, depth_texture)
+}
+
+pub fn create_fbo<'a>(
+    display: &Display<WindowSurface>,
+    color_texture: &'a Texture2d,
+    depth_texture: &'a DepthTexture2d,
+) -> SimpleFrameBuffer<'a> {
+    SimpleFrameBuffer::with_depth_buffer(display, color_texture, depth_texture).unwrap()
 }
