@@ -1,1 +1,3 @@
 # Gravity sim
+
+This is a gravity simulator... It is not finished yet...
