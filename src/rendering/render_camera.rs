@@ -1,4 +1,6 @@
 
+use core::f32;
+
 use glam::{Mat4, Vec3, Vec4, Vec4Swizzles};
 use winit::window::Window;
 
@@ -6,12 +8,15 @@ use super::render::calculate_perspective;
 
 
 pub struct RenderCamera{
-    camera_pos: Vec3,
-    camera_target: Vec3,
-    camera_up: Vec3,
-    camera_front: Vec3,
+    pos: Vec3,
+    target: Vec3,
+    up: Vec3,
+    front: Vec3,
+    yaw: f32, //phi
+    pitch: f32, // theta
+    radius: f32,
     pub perspective: Mat4,
-    pub camera_matrix: Mat4,
+    pub matrix: Mat4,
 }
 
 const SQRT3:f32 = 1.7320508;
@@ -20,78 +25,113 @@ impl RenderCamera{
 
     pub fn new(start_pos: Vec3, target:Vec3, up:Vec3, front:Vec3, dim: (f32, f32)) -> RenderCamera{
 
-        let mut camera = RenderCamera{camera_pos:start_pos,camera_target:target,camera_up:up, camera_front:front, perspective:Mat4::ZERO, camera_matrix: Mat4::ZERO};
-        camera.camera_matrix = camera.look_at();
+        let mut camera = RenderCamera{pos:start_pos,target:target,up:up, front:front, perspective:Mat4::ZERO, yaw:0.0, pitch:std::f32::consts::FRAC_PI_2, radius: 20.0, matrix: Mat4::ZERO};
+        camera.matrix = camera.look_at();
         camera.perspective = calculate_perspective(dim);
         return camera;
     }
 
     pub fn init(dim: (f32, f32)) -> RenderCamera{
-        let mut camera = RenderCamera{camera_pos:Vec3::ZERO,camera_target:Vec3::new(0.0, 0.0, -2.0),camera_up:Vec3::new(0.0, 1.0, 0.0), camera_front:Vec3::new(0.0, 0.0, -1.0), perspective:Mat4::ZERO, camera_matrix: Mat4::ZERO};
-        camera.camera_matrix = camera.look_at();
+        let mut camera = RenderCamera{pos:Vec3::ZERO,target:Vec3::new(0.0, 0.0, -2.0),up:Vec3::new(0.0, 1.0, 0.0), front:Vec3::new(0.0, 0.0, -1.0), perspective:Mat4::ZERO, yaw:0.0, pitch:std::f32::consts::FRAC_PI_2, radius: 20.0, matrix: Mat4::ZERO};
+        camera.matrix = camera.look_at();
         camera.perspective = calculate_perspective(dim);
         return camera;
     }
 
-    pub fn update(&mut self, rot: Mat4){
-        println!("pos before  {}", self.camera_pos);
-        println!("Target is {}", self.camera_target);
-        let rotated_pos = rot*Vec4::new(self.get_pos().x, self.get_pos().y, self.get_pos().z, 1.0);
-        self.set_pos(rotated_pos.xyz() / rotated_pos.w);
-        self.camera_matrix = self.look_at();
-        self.camera_front = (self.camera_target-self.camera_pos).normalize();
-        println!("pos after {}", self.camera_pos);
+    pub fn update(&mut self, yaw_updated: f32, pitch_updated: f32){
+        //println!("pos before  {}", self.pos);
+       // println!("Target is {}", self.target);
+        if yaw_updated == 0.0 && pitch_updated == 0.0{
+            return
+        }
+
+        self.yaw += yaw_updated; //f32::clamp(self.yaw + yaw_updated, 0.01, f32::consts::PI-0.01);
+        self.pitch += pitch_updated;
+
+        /* 
+        self.yaw += yaw_updated;
+        self.pitch = f32::clamp(self.pitch + pitch_updated, -89.0,89.0);
+        let yaw_r = self.yaw.to_radians();
+        let pitch_r = self.pitch.to_radians();
+
+        // LH system: swap sin sign compared to RH
+        let front = Vec3::new(
+            yaw_r.cos() * pitch_r.cos(),
+            pitch_r.sin(),
+            yaw_r.sin() * pitch_r.cos(),  // same, but LH means +Z is forward
+        );
+        println!("Prev front was {}, now it is {}", self.front, front.normalize());
+        self.front = front.normalize();
+
+        // Right handed cross flips too → use LH up
+        let right = Vec3::Y.cross(self.front).normalize(); 
+        self.up = self.front.cross(right).normalize();
+        */
+
+    }
+
+    pub fn get_position(&self) -> Vec3 {
+        let x = self.radius * self.pitch.cos() * self.yaw.sin();
+        let y = self.radius * self.yaw.cos();
+        let z = self.radius * self.pitch.sin() * self.yaw.sin();
+        Vec3::new(x, y, z) + self.target
+    }
+
+
+    pub fn getMatrix(&self) -> [[f32; 4]; 4] {
+        let pos = self.get_position();
+        return Mat4::look_at_lh(pos, self.target, self.up).to_cols_array_2d();
     }
 
     pub fn get_right(&self) -> Vec3{
-        return self.camera_front.cross(self.camera_up).normalize();
+        return self.front.cross(self.up).normalize();
     }
 
     pub fn get_pos(&self) -> Vec3{
-        return self.camera_pos
+        return self.pos
     }
 
     pub fn get_up(&self) -> Vec3{
-        return self.camera_up
+        return self.up
     }
 
     pub fn get_front(&self) -> Vec3{
-        return self.camera_front
+        return self.front
     }
 
     pub fn set_front(&mut self, new_front:Vec3){
-        self.camera_front = new_front;
+        self.front = new_front;
     }
 
 
     pub fn r#set_x(&mut self, x:f32){
-        self.camera_pos[0] = x;
+        self.pos[0] = x;
     }
 
     pub fn r#set_y(&mut self, y:f32){
-        self.camera_pos[1] = y;
+        self.pos[1] = y;
     }
 
     pub fn set_pos(&mut self, pos:Vec3){
-        self.camera_pos = pos;
-        self.camera_matrix = self.look_at();
+        self.pos = pos;
+        self.matrix = self.look_at();
     }
 
     pub fn r#move(&mut self, direction:Vec3){
-        self.camera_pos += direction;
+        self.pos += direction;
     }
 
     pub fn r#move_target(&mut self, direction:Vec3){
-        self.camera_target += direction;
+        self.target += direction;
     }
 
     pub fn r#change_target(&mut self, new_target:Vec3){
-        self.camera_target = new_target;
+        self.target = new_target;
     }
 
     pub fn look_at(&self) -> Mat4{
-        let f = (self.camera_target-self.camera_pos).normalize();
-        let mut u = self.camera_up.normalize();
+        let f = (self.target-self.pos).normalize();
+        let mut u = self.up.normalize();
         let s = (f.cross(u)).normalize();
         u = s.cross(f);
 
@@ -101,7 +141,7 @@ impl RenderCamera{
             f.extend(0.0),
             Vec4::new(0.0, 0.0, 0.0, 1.0),
         );    
-        let translation = Mat4::from_translation(-self.camera_pos);
+        let translation = Mat4::from_translation(-self.pos);
 
         rotation * translation
     }

@@ -35,6 +35,11 @@ impl WorldObject{
     }
    }
 
+   pub fn collides(&self, obj2: &WorldObject) -> bool{
+    let distance = self.render_object.model_object.get_posistion().distance(obj2.render_object.model_object.get_posistion());
+    return self.physics_object.collides(distance, obj2);
+   }
+
    pub fn update_physics(&mut self, dt: f32){
     self.physics_object.update_physics(dt, &mut self.render_object);
    }

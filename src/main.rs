@@ -12,6 +12,7 @@ use core::f32;
 use std::{collections::HashMap, time::Instant};
 
 mod scene;
+mod spline;
 mod rendering;
 use rendering::{render::{Renderer, Vertex, VertexSimple}, render_camera::RenderCamera, text::{format_to_exact_length, RenderedText, TextVbo}};
 
@@ -126,7 +127,7 @@ fn main() {
 
 
 
-    let mut return_scene = Scene::init_gravity_scene(&window, &display, (window.inner_size().width/1, window.inner_size().height/1));
+    let mut return_scene = Scene::init_gravity_scene(&window, &display, (window.inner_size().width/4, window.inner_size().height/4));
     //scene_test.new_object(render_name, &display, vertex_data, fragment_data, obj_data)
     let _ = event_loop.run(move |event, window_target| {
         match event {
@@ -137,7 +138,7 @@ fn main() {
                 window_target.exit()
             },
             winit::event::WindowEvent::CursorMoved { device_id: _, position } => {
-                println!("Moved mouse!");
+                ////println!("Moved mouse!");
                 input_handler.update_mouse(position, &window.inner_size());
             }
             winit::event::WindowEvent::MouseWheel { device_id: _, delta, phase } =>{
@@ -168,7 +169,7 @@ fn main() {
                 display.resize(window_size.into());
             },
             winit::event::WindowEvent::RedrawRequested => {
-                println!();
+                ////println!();
                 let mainTimer = Instant::now();
                 //Physics step
                 let new_time = Instant::now();
@@ -185,7 +186,7 @@ fn main() {
                     let physicsTimer = Instant::now();
                     return_scene.update_physics(dt);
                     return_scene.update_camera(dt, &input_handler);
-                    println!("Physics: {:.2?}", physicsTimer.elapsed());
+                    ////println!("Physics: {:.2?}", physicsTimer.elapsed());
                     t += dt;
                     accumulator -= dt;
                 }
@@ -200,19 +201,19 @@ fn main() {
                 let mut drawTimer = Instant::now();
                 let mut target = display.draw();
                 
-                println!("After fbo creation: {:.2?}", drawTimer.elapsed());
+                ////println!("After fbo creation: {:.2?}", drawTimer.elapsed());
                 drawTimer = Instant::now();
                 return_scene.draw(&display);
-                println!("Draw scene: {:.2?}", drawTimer.elapsed());
+                //println!("Draw scene: {:.2?}", drawTimer.elapsed());
                 drawTimer = Instant::now();
                 target.clear_color_and_depth((0.3, 0.6, 0.1, 1.0), 1.0);
-                target.draw(&low_res_renderer.vbo, &low_res_renderer.indicies,&low_res_renderer.program, &uniform! {tex: &return_scene.scene_tex}, &low_res_renderer.draw_params).unwrap();
-                println!("Draw to screen: {:.2?}", drawTimer.elapsed());
+                target.draw(&low_res_renderer.vbo, &low_res_renderer.indicies,&low_res_renderer.program, &uniform! {tex: return_scene.scene_tex.sampled().magnify_filter(MagnifySamplerFilter::Nearest)}, &low_res_renderer.draw_params).unwrap();
+                //println!("Draw to screen: {:.2?}", drawTimer.elapsed());
                 target.finish().unwrap();
-                println!("Finish: {:.2?}", drawTimer.elapsed());
+                //println!("Finish: {:.2?}", drawTimer.elapsed());
                 frames = frames + 1.0;
-                println!("After main: {:.2?}", mainTimer.elapsed());
-                println!();
+                //println!("After main: {:.2?}", mainTimer.elapsed());
+                //println!();
             },
             _ => (),
             },

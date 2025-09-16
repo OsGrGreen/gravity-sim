@@ -1,7 +1,7 @@
 use std::collections::{hash_set::Iter, HashSet};
 
 use glam::Vec2;
-use winit::{dpi::{PhysicalPosition, PhysicalSize}, event::KeyEvent, keyboard::{self, PhysicalKey}};
+use winit::{dpi::{PhysicalPosition, PhysicalSize}, event::KeyEvent, keyboard::{self, KeyCode, PhysicalKey}};
 
 pub struct InputHandler{
     movement: Vec2,
@@ -47,8 +47,8 @@ impl InputHandler{
         return self.pressed_keys.iter();
     }
 
-    pub fn is_pressed(&self, key: &PhysicalKey) -> bool{
-        self.pressed_keys.contains(key)
+    pub fn is_pressed(&self, key: KeyCode) -> bool{
+        self.pressed_keys.contains(&PhysicalKey::Code(key))
     }
 
     pub fn remove_pressed(&mut self, remove_key: &PhysicalKey){

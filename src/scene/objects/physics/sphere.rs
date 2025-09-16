@@ -1,6 +1,8 @@
+use std::any::Any;
+
 use glam::Vec3;
 
-use crate::scene::objects::renderable::renderobjects::RenderObject;
+use crate::scene::objects::{renderable::renderobjects::RenderObject, WorldObject};
 
 use super::PhysicsObject;
 
@@ -41,6 +43,17 @@ impl PhysicsObject for Sphere{
 
     fn set_init_velocity(&mut self, vel: Vec3){
         self.velocity = vel;
+    }
+    
+    fn collides(&self, dist: f32, obj2: &WorldObject)-> bool {
+        if dist <= self.radius+obj2.physics_object.get_size(){
+            return true
+        }
+        return false;
+    }
+    
+    fn get_size(&self) -> f32 {
+        self.radius
     }
 }
 

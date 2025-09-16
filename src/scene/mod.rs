@@ -5,21 +5,20 @@ use glium::{framebuffer::SimpleFrameBuffer, glutin::surface::WindowSurface, text
 use light::Light;
 use objects::{physics::{physics_object_factory, PhysicsObject}, renderable::renderobjects::RenderObject, WorldObject};
 use rand::Rng;
-use winit::window::Window;
+use winit::{keyboard, window::Window};
 
-use crate::{rendering::{render::{self, Renderer}, render_camera::RenderCamera}, util::{create_fbo, create_render_textures, input_handler::{self, InputHandler}, load_texture}};
+use crate::{rendering::{render::{self, Renderer}, render_camera::RenderCamera}, scene::objects::physics::controllers::{self, gravity_controller::Gravity, Controller}, spline::Spline, util::{create_fbo, create_render_textures, input_handler::{self, InputHandler}, load_texture}};
 
 pub mod bezier_surface;
 pub mod objects;
 pub mod light;
-
-const G:f32 = 6.67e-5;//e-11;
 
 pub struct Scene<'a>{
     world_objects: Vec<WorldObject>,
     lights: Vec<Light>,
     renderers: HashMap<String,Renderer<'a>>,
     textures: HashMap<String,Texture2d>,
+    controllers: Vec<Box<dyn Controller>>,
     pub camera: RenderCamera,
     pub scene_tex: Texture2d,
     scene_depth: DepthTexture2d,
@@ -28,8 +27,8 @@ pub struct Scene<'a>{
 impl<'a> Scene<'a>{
     pub fn new(camera: RenderCamera, lights: Option<Vec<Light>>, display: &Display<WindowSurface>, size: (u32,u32)) -> Scene<'a>{
         let (world_texture, depth_world_texture) = create_render_textures(&display,size.0, size.1);
-
-        Scene { world_objects: Vec::new(), lights: lights.unwrap_or(Vec::new()), renderers: HashMap::new(), textures: HashMap::new(),camera, scene_tex: world_texture, scene_depth: depth_world_texture}
+        let gravity = Gravity::new(6.67e-5);
+        Scene { world_objects: Vec::new(), lights: lights.unwrap_or(Vec::new()), renderers: HashMap::new(), textures: HashMap::new(), controllers: vec![Box::new(gravity)], camera, scene_tex: world_texture, scene_depth: depth_world_texture}
     }
 
     pub fn draw(&mut self, display: &Display<WindowSurface>){
@@ -42,6 +41,17 @@ impl<'a> Scene<'a>{
             }
             
         }
+        let mut spline = Spline::new_empty();
+        spline.insert([Vec3::new(2.0, 0.0, 0.0), Vec3::new(0.0, 1.0, 2.1), Vec3::new(1.0, 2.0, 0.0), Vec3::new(1.0, 0.0, -0.5)]);
+        spline.insert_c2(Vec3::new(-2.0, 0.0, 0.0));
+        //spline.insert_c2(Vec3::new(0.0, 1.0, 0.5));
+        //spline.insert_c2(Vec3::new(2.0,0.0,0.0));
+        //spline.insert_c0([Vec3::new(2.0, -0.5, 0.5), Vec3::new(0.0, -1.0, 1.0), Vec3::new(3.0, -2.0, 2.0)]);
+        //spline.insert_c0([Vec3::new(2.0, -4.0, 2.0),Vec3::new(0.5, 5.0, 2.0),Vec3::new(0.5, 0.0, 0.0)]);
+
+        let (vbo, inds, rend) = spline.spline_renderer(display);
+        //println!("VBO {:?}", vbo);
+        fbo.draw(&vbo, &inds, &rend.program, &uniform! {u_screenSize: [self.scene_tex.dimensions().0 as f32, self.scene_tex.dimensions().1 as f32], u_thickness: 50.0 as f32, steps: 48.0 as f32, model: Mat4::IDENTITY.to_cols_array_2d(), projection: self.camera.perspective.to_cols_array_2d(), view:self.camera.getMatrix()}, &rend.draw_params).unwrap();
     }
 
     pub fn add_generic_renderer(&mut self, name: &str, display: &Display<WindowSurface>,vertex_data: &[u8], fragment_data: &[u8], obj_data: &[u8]){
@@ -77,31 +87,23 @@ impl<'a> Scene<'a>{
     }
 
     pub fn update_camera(&mut self, dt: f32, input_handler: &InputHandler){
-        println!("mouse pos: {}", input_handler.pos());
-        if input_handler.pos().x.abs() > 0.2{
-            let rotation_matrix = Mat4::from_axis_angle(self.camera.get_up(), 5.0*dt*input_handler.pos().x);
-            self.camera.update(rotation_matrix);
-        }
-        if input_handler.pos().y.abs() > 0.3{
-            println!("Right angle is {}", self.camera.get_right());
-            let rotation_matrix = Mat4::from_axis_angle(self.camera.get_right(), 5.0*dt*input_handler.pos().y);
-            self.camera.update(rotation_matrix);
+        //println!("mouse pos: {}", input_handler.pos());
+        if input_handler.is_pressed(keyboard::KeyCode::ControlLeft){
+            let mut yaw = 0.0;
+            let mut pitch = 0.0;
+            if input_handler.pos().x.abs() > 0.2{
+                yaw = 5.0*dt*input_handler.pos().x;
+            }
+            if input_handler.pos().y.abs() > 0.3{
+                //println!("Right angle is {}", self.camera.get_right());
+                pitch =  5.0*dt*input_handler.pos().y;
+            }
+            self.camera.update(yaw, pitch);
         }
     }
 
     pub fn update_physics(&mut self, dt: f32){
-        let len = self.world_objects.len();
-        for i in 0..len {
-            let (before, after) = self.world_objects.split_at_mut(i);
-            let (obj1, after) = after.split_first_mut().unwrap(); // Get obj1 from after
-            if !obj1.id.eq("sun"){
-                for obj2 in before.iter().chain(after.iter()) {
-                    let (dir, distance) = obj1.distance(obj2);
-                    let force = G*(obj1.physics_object.get_mass()*obj2.physics_object.get_mass())/(distance*distance);
-                    obj1.physics_object.add_force(dir.normalize()*force);
-                }
-            }
-        }
+        self.controllers[0].as_mut().update(&mut self.world_objects);
         for obj in &mut self.world_objects{
             obj.update_physics(dt);
         }
@@ -110,7 +112,7 @@ impl<'a> Scene<'a>{
     }
 
     pub fn init_gravity_scene(window: &Window, display: &Display<WindowSurface>, size: (u32,u32)) -> Scene<'a>{
-        let planet_renderer  = Renderer::init(display, include_bytes!(r"../../shaders/planet/vert.glsl"), include_bytes!(r"../../shaders/planet/frag.glsl"), include_bytes!(r"../../objects/suzanne.obj")).unwrap();
+        let planet_renderer  = Renderer::init(display, include_bytes!(r"../../shaders/planet/vert.glsl"), include_bytes!(r"../../shaders/planet/frag.glsl"), include_bytes!(r"../../objects/planet.obj")).unwrap();
         let mut render_map = HashMap::new();
         render_map.insert("planet".to_string(), planet_renderer);
         
@@ -140,8 +142,8 @@ impl<'a> Scene<'a>{
         }
 
         let (world_texture, depth_world_texture) = create_render_textures(&display,size.0, size.1);
-
-        let mut return_scene = Scene { world_objects: solar_system, lights: Vec::new(), renderers: render_map,camera: RenderCamera::new(Vec3::new(0.0, 0.0, 15.0), Vec3::new(0.0, 0.0, 0.0), Vec3::new(0.0, 1.0, 0.0), Vec3::new(0.0, 0.0, -1.0), window.inner_size().into()), textures: HashMap::new(), scene_tex: world_texture, scene_depth: depth_world_texture};
+        let gravity = Gravity::new(6.67e-5);
+        let mut return_scene = Scene { world_objects: solar_system, lights: Vec::new(), renderers: render_map, controllers: vec![Box::new(gravity)], camera: RenderCamera::new(Vec3::new(0.0, 0.0, 15.0), Vec3::new(0.0, 0.0, 0.0), Vec3::new(0.0, 1.0, 0.0), Vec3::new(0.0, 0.0, -1.0), window.inner_size().into()), textures: HashMap::new(), scene_tex: world_texture, scene_depth: depth_world_texture};
         
         return_scene.add_texture("sun", display, include_bytes!(r"../../textures/sun.png"));
         return_scene.add_texture("planet1", display, include_bytes!(r"../../textures/planet.png"));

@@ -51,6 +51,6 @@ impl ModelObject{
 
 
     pub fn get_model(self) -> Mat4{
-        return self.translation*self.scaling*self.rotation
+        return self.translation*self.rotation*self.scaling
     }
 }

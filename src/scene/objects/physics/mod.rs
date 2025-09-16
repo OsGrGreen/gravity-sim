@@ -1,9 +1,10 @@
 use glam::Vec3;
 use sphere::Sphere;
 
-use super::renderable::renderobjects::RenderObject;
+use super::{renderable::renderobjects::RenderObject, WorldObject};
 
 pub mod sphere;
+pub mod controllers;
 
 pub trait PhysicsObject{
     fn update_physics(&mut self, dt:f32, model: &mut RenderObject);
@@ -13,6 +14,8 @@ pub trait PhysicsObject{
     fn set_force(&mut self, force: Vec3);
     fn get_mass(&self) -> f32;
     fn set_init_velocity(&mut self, vel: Vec3);
+    fn collides(&self, dist: f32, obj2: &WorldObject) -> bool;
+    fn get_size(&self) -> f32;
 }
 
 
