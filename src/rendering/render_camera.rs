@@ -25,14 +25,14 @@ impl RenderCamera{
 
     pub fn new(start_pos: Vec3, target:Vec3, up:Vec3, front:Vec3, dim: (f32, f32)) -> RenderCamera{
 
-        let mut camera = RenderCamera{pos:start_pos,target:target,up:up, front:front, perspective:Mat4::ZERO, yaw:0.0, pitch:std::f32::consts::FRAC_PI_2, radius: 20.0, matrix: Mat4::ZERO};
+        let mut camera = RenderCamera{pos:start_pos,target:target,up:up, front:front, perspective:Mat4::ZERO, yaw:0.2, pitch:2.0, radius: 20.0, matrix: Mat4::ZERO};
         camera.matrix = camera.look_at();
         camera.perspective = calculate_perspective(dim);
         return camera;
     }
 
     pub fn init(dim: (f32, f32)) -> RenderCamera{
-        let mut camera = RenderCamera{pos:Vec3::ZERO,target:Vec3::new(0.0, 0.0, -2.0),up:Vec3::new(0.0, 1.0, 0.0), front:Vec3::new(0.0, 0.0, -1.0), perspective:Mat4::ZERO, yaw:0.0, pitch:std::f32::consts::FRAC_PI_2, radius: 20.0, matrix: Mat4::ZERO};
+        let mut camera = RenderCamera{pos:Vec3::ZERO,target:Vec3::new(0.0, 0.0, -2.0),up:Vec3::new(0.0, 1.0, 0.0), front:Vec3::new(0.0, 0.0, -1.0), perspective:Mat4::ZERO, yaw:0.2, pitch: 3.0, radius: 20.0, matrix: Mat4::ZERO};
         camera.matrix = camera.look_at();
         camera.perspective = calculate_perspective(dim);
         return camera;
@@ -45,7 +45,7 @@ impl RenderCamera{
             return
         }
 
-        self.yaw += yaw_updated; //f32::clamp(self.yaw + yaw_updated, 0.01, f32::consts::PI-0.01);
+        self.yaw = f32::clamp(self.yaw + yaw_updated, 0.01, f32::consts::PI-0.01);
         self.pitch += pitch_updated;
 
         /* 
