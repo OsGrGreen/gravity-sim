@@ -4,6 +4,7 @@ layout(isolines) in;
 
 out vec3 fragment_Normal;
 out vec4 fragment_Position;
+out float frag_t;
 
 
 void BernsteinPolynomials(out float[4] b, out float[4] db, float t) {
@@ -40,6 +41,6 @@ void main() {
 	vec3 dPos_dt = vec3(p00*db[0] + p01*db[1] + p02*db[2]+ p03*db[3]);
     vec3 out_point = vec3(fragment_Position);
 	fragment_Normal = normalize(cross(dPos_dt, out_point));
+	frag_t = t;
 	gl_Position = fragment_Position;
-	
 }

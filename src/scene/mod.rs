@@ -98,7 +98,7 @@ impl<'a> Scene<'a>{
                 //println!("Right angle is {}", self.camera.get_right());
                 pitch =  5.0*dt*input_handler.pos().y;
             }
-            self.camera.update(pitch, yaw);
+            self.camera.update(yaw, pitch);
         }
     }
 

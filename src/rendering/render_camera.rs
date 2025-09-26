@@ -1,7 +1,7 @@
 
 use core::f32;
 
-use glam::{Mat4, Vec3, Vec4, Vec4Swizzles};
+use glam::{Mat4, Quat, Vec3, Vec4, Vec4Swizzles};
 use winit::window::Window;
 
 use super::render::calculate_perspective;
@@ -12,8 +12,7 @@ pub struct RenderCamera{
     target: Vec3,
     up: Vec3,
     front: Vec3,
-    yaw: f32, //phi
-    pitch: f32, // theta
+    orientation: Quat, // full camera rotation
     radius: f32,
     pub perspective: Mat4,
     pub matrix: Mat4,
@@ -25,14 +24,14 @@ impl RenderCamera{
 
     pub fn new(start_pos: Vec3, target:Vec3, up:Vec3, front:Vec3, dim: (f32, f32)) -> RenderCamera{
 
-        let mut camera = RenderCamera{pos:start_pos,target:target,up:up, front:front, perspective:Mat4::ZERO, yaw:0.2, pitch:2.0, radius: 20.0, matrix: Mat4::ZERO};
+        let mut camera = RenderCamera{pos:start_pos,target:target,up:up, front:front, perspective:Mat4::ZERO, orientation : Quat::IDENTITY, radius: 20.0, matrix: Mat4::ZERO};
         camera.matrix = camera.look_at();
         camera.perspective = calculate_perspective(dim);
         return camera;
     }
 
     pub fn init(dim: (f32, f32)) -> RenderCamera{
-        let mut camera = RenderCamera{pos:Vec3::ZERO,target:Vec3::new(0.0, 0.0, -2.0),up:Vec3::new(0.0, 1.0, 0.0), front:Vec3::new(0.0, 0.0, -1.0), perspective:Mat4::ZERO, yaw:0.2, pitch: 3.0, radius: 20.0, matrix: Mat4::ZERO};
+        let mut camera = RenderCamera{pos:Vec3::ZERO,target:Vec3::new(0.0, 0.0, -2.0),up:Vec3::new(0.0, 1.0, 0.0), front:Vec3::new(0.0, 0.0, -1.0), perspective:Mat4::ZERO, orientation : Quat::IDENTITY, radius: 20.0, matrix: Mat4::ZERO};
         camera.matrix = camera.look_at();
         camera.perspective = calculate_perspective(dim);
         return camera;
@@ -45,8 +44,16 @@ impl RenderCamera{
             return
         }
 
-        self.yaw = f32::clamp(self.yaw + yaw_updated, 0.01, f32::consts::PI-0.01);
-        self.pitch += pitch_updated;
+        // rotate around WORLD up for yaw
+        let yaw = Quat::from_rotation_y(yaw_updated);
+
+        // rotate around camera's LOCAL right for pitch
+        let right = self.orientation * Vec3::X;
+        let pitch = Quat::from_axis_angle(right, pitch_updated);
+
+        // combine: apply yaw first, then pitch
+        self.orientation = yaw * pitch * self.orientation;
+        self.orientation = self.orientation.normalize();
 
         /* 
         self.yaw += yaw_updated;
@@ -71,16 +78,20 @@ impl RenderCamera{
     }
 
     pub fn get_position(&self) -> Vec3 {
-        let x = self.radius * self.pitch.cos() * self.yaw.sin();
-        let y = self.radius * self.yaw.cos();
-        let z = self.radius * self.pitch.sin() * self.yaw.sin();
-        Vec3::new(x, y, z) + self.target
+        let offset = self.orientation * Vec3::new(0.0, 0.0, -self.radius);
+        self.target + offset
     }
 
 
     pub fn getMatrix(&self) -> [[f32; 4]; 4] {
         let pos = self.get_position();
-        return Mat4::look_at_lh(pos, self.target, self.up).to_cols_array_2d();
+        let forward = (self.target - pos).normalize();
+
+        // Derive right and up from orientation
+        let right = (self.orientation * Vec3::X).normalize();
+        let up = right.cross(forward).normalize();
+
+        return Mat4::look_at_lh(pos, self.target, up).to_cols_array_2d();
     }
 
     pub fn get_right(&self) -> Vec3{

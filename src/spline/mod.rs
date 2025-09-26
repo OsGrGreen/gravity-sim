@@ -11,7 +11,7 @@ impl BezierCurve{
     pub fn evaluate(&self, t: f32) -> Vec3{
         let p0 = (1.0-t).powf(3.0) * self.control_points[0];
         let p1 = 3.0*(1.0-t).powf(2.0)*t * self.control_points[1];
-        let p2 = 3.0*(1.0-t).powf(2.0)*t * self.control_points[2];
+        let p2 = 3.0 * (1.0 - t) * t.powf(2.0) * self.control_points[2];
         let p3 = (t).powf(3.0)*self.control_points[3];
 
         return p0+p1+p2+p3;
