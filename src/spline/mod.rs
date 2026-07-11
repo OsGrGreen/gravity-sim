@@ -1,4 +1,6 @@
-use glam::Vec3;
+use std::io::stdout;
+
+use glam::{Mat4, Quat, Vec3};
 use glium::{glutin::{api::wgl::display, surface::WindowSurface}, index::PrimitiveType, Display, IndexBuffer, VertexBuffer};
 
 use crate::{rendering::{self, render::{Renderer, VertexSimple}}, util};
@@ -33,6 +35,12 @@ impl Spline{
         Spline { curves: Vec::new() }
     }
 
+    pub fn new( points: [Vec3; 4]) -> Spline{
+        Spline {
+            curves: vec![BezierCurve::new(points)]
+        }
+    }
+
     pub fn insert(&mut self, points: [Vec3; 4]) {
         self.curves.push(BezierCurve::new(points));
     }
@@ -60,8 +68,39 @@ impl Spline{
         self.curves.push(BezierCurve::new(insert_points));
     }
 
-    pub fn insert_loop(&mut self){
+    pub fn new_circle(center: Vec3, radius: f32, elongation: f32, yaw: f32, pitch: f32) -> Spline{
+        let intermediary_point = (4.0/3.0)*(std::f32::consts::PI/8.0).tan()*radius;
+        let yaw = Quat::from_rotation_y(yaw);
+
+        let pitch = Quat::from_axis_angle(Vec3::X, pitch);
+        let mut orientation = yaw * pitch;
+        orientation = orientation.normalize();
         
+        let quad1 = [orientation*(center + Vec3::new(elongation+radius,0.0,0.0)), orientation*(center + Vec3::new(elongation+radius,intermediary_point,0.0)),orientation*(center + Vec3::new(intermediary_point,radius,0.0)), orientation*(center + Vec3::new(0.0,radius,0.0))];
+        let quad2 = [orientation*(center + Vec3::new(0.0,radius,0.0)), orientation*(center + Vec3::new(-intermediary_point,radius,0.0)), orientation*(center + Vec3::new(-elongation-radius,intermediary_point,0.0)), orientation*(center + Vec3::new(-elongation-radius,0.0,0.0))];
+        let quad3 = [orientation*(center + Vec3::new(0.0,-radius,0.0)), orientation*(center + Vec3::new(intermediary_point,-radius,0.0)), orientation*(center + Vec3::new(elongation+radius,-intermediary_point,0.0)), orientation*(center + Vec3::new(elongation+radius,0.0,0.0))];
+        let quad4 = [orientation*(center + Vec3::new(-elongation-radius,0.0,0.0)), orientation*(center + Vec3::new(-elongation-radius,-intermediary_point,0.0)),orientation*(center + Vec3::new(-intermediary_point,-radius,0.0)), orientation*(center + Vec3::new(0.0,-radius,0.0))];
+
+        Spline{
+            curves: vec![BezierCurve::new(quad1), BezierCurve::new(quad2), BezierCurve::new(quad4), BezierCurve::new(quad3)]
+        }
+    }
+
+    pub fn insert_loop(&mut self, path: Spline, mirrorNormal: Vec3){
+        let start = path.curves.first().unwrap();
+        let end = path.curves.last().unwrap();
+
+        for bez in path.curves{
+            let mut newPoints = [Vec3::ZERO; 4];
+            let mut index = 0;
+            for v in bez.control_points{
+                newPoints[index] = -v;
+                index += 1;
+            }
+            let newBez = BezierCurve::new(newPoints);
+            self.curves.push(newBez);
+            self.curves.push(bez);
+        }
     }
 
     pub fn to_array(&self) -> Vec<Vec3>{
@@ -85,6 +124,29 @@ impl Spline{
 
     pub fn get_indicies(&self) -> Vec<u16>  {
         (0..=self.to_array().len() as u16).collect()
+    }
+
+    /*pub fn next(&self, pos:Vec3) -> Vec3 {
+        // Get which beziercurve
+        // Take t at that beziercurve?
+        // Return result
+    }*/
+
+    pub fn evaluate(&self, t:f32) -> Vec3 {
+        let n = self.curves.len();
+        if n == 0 {
+            return Vec3::ZERO;
+        }
+
+        let t = t.clamp(0.0, n as f32 - f32::EPSILON);
+        let seg_idx = t.floor() as usize;
+        let u = t.fract();
+
+        self.curves.get(seg_idx).unwrap().evaluate(u)
+    }
+
+    pub fn len(&self) -> usize{
+        return self.curves.len();
     }
 
     pub fn spline_renderer(&self, display: &Display<WindowSurface>) -> (VertexBuffer<VertexSimple>, IndexBuffer<u16>, Renderer){

@@ -16,6 +16,7 @@ out vec4 color;
 
 
 void main() {
+    // Not perfect, since the different sections start/stop at the same time, making the connected points/dashed lines or gaps longer
     float totalSize = u_dashSize + u_gapSize;
 
     float cyclePos = mod(frag_t, totalSize);

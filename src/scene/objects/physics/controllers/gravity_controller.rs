@@ -1,21 +1,25 @@
 
+use crate::{scene::objects::ObjectId, util::input_handler::InputHandler};
+
 use super::Controller;
 
 pub struct Gravity{
     G: f32,
+    ids: Vec<ObjectId>,
 }
 
 impl Gravity{
     pub fn new(g_const: f32) -> Gravity{
-        Gravity { G: g_const }
+        Gravity { G: g_const , ids:Vec::new()}
     }
 }
 
 impl Controller for Gravity{
-    fn update(&mut self, objects: &mut Vec<crate::scene::objects::WorldObject>) {
+    fn update(&mut self, objects: &mut Vec<crate::scene::objects::WorldObject>, _: &InputHandler) {
         for i in 0..objects.len() {
             let (before, after) = objects.split_at_mut(i);
             let (obj1, after) = after.split_first_mut().unwrap(); // Get obj1 from after
+            if self.ids.contains(&obj1.id){
                 for obj2 in before.iter().chain(after.iter()) {
                     let (dir, distance) = obj1.distance(obj2);
                     let force = self.G*(obj1.physics_object.get_mass()*obj2.physics_object.get_mass())/(distance*distance);
@@ -25,6 +29,17 @@ impl Controller for Gravity{
                         //println!("Collision between {:?} and {:?}", obj1,obj2);
                     }
                 }
+            }
         }
+    }
+    
+    fn add(&mut self, objects: Vec<&crate::scene::objects::WorldObject>) {
+        for obj in objects{
+            self.ids.push(obj.id);
+        }
+    }
+    
+    fn add_single(&mut self, object: &crate::scene::objects::WorldObject) {
+        self.ids.push(object.id);
     }
 }

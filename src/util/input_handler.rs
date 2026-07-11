@@ -1,13 +1,15 @@
-use std::collections::{hash_set::Iter, HashSet};
+use std::{collections::{hash_set::Iter, HashSet}, f32::consts::E};
 
 use glam::Vec2;
-use winit::{dpi::{PhysicalPosition, PhysicalSize}, event::KeyEvent, keyboard::{self, KeyCode, PhysicalKey}};
+use winit::{dpi::{PhysicalPosition, PhysicalSize}, event::{DeviceId, ElementState, KeyEvent, MouseButton, WindowEvent}, keyboard::{self, KeyCode, PhysicalKey}};
 
 pub struct InputHandler{
     movement: Vec2,
-    pressed_keys: HashSet<PhysicalKey>, //Maybe make into a map and it has to be processed before it is removed...
+    pressed_keys: HashSet<PhysicalKey>, //Maybe make into a map and it has to be processed before it is removed...'
+    pressed_mouse_keys: HashSet<MouseButton>,
     mouse_pos: Vec2,
     mouse_delta: Vec2,
+    size: PhysicalSize<u32>
 }
 
 impl InputHandler{
@@ -15,12 +17,23 @@ impl InputHandler{
         InputHandler{
             movement: Vec2::ZERO,
             pressed_keys: HashSet::new(),
+            pressed_mouse_keys: HashSet::new(),
             mouse_pos: Vec2::ZERO,
             mouse_delta: Vec2::ZERO,
+            size: PhysicalSize { width: 0, height: 0 }
+        }
+    }
+
+    pub fn update_mouse_click(&mut self, device_id: DeviceId, state: ElementState, button: MouseButton){
+        if state.is_pressed(){
+            self.pressed_mouse_keys.insert(button);
+        }else{
+            self.pressed_mouse_keys.remove(&button);
         }
     }
 
     pub fn update_mouse(&mut self, new_pos: PhysicalPosition<f64>, size: &PhysicalSize<u32>){
+        self.size = *size;
         let pos = Self::convert_to_ndc(new_pos, size);
         self.mouse_delta = self.mouse_pos-pos;
         self.mouse_pos = pos;
@@ -31,12 +44,21 @@ impl InputHandler{
         - ((pos.y as f32 / size.height as f32) * 2.0 - 1.0))
     }
 
+    fn convert_vec2_ndc(pos: Vec2, size: &PhysicalSize<u32>) -> Vec2{
+        Vec2::new((pos.x as f32 / size.width as f32) * 2.0 - 1.0,
+        - ((pos.y as f32 / size.height as f32) * 2.0 - 1.0))
+    }
+
     pub fn pos(&self) -> Vec2{
         self.mouse_pos
     }
 
     pub fn delta(&self) -> Vec2{
         self.mouse_delta
+    }
+
+    pub fn ndc_pos(&self) -> Vec2 {
+        Self::convert_vec2_ndc(self.pos(), &self.size)
     }
 
     pub fn get_movement(&self) -> Vec2{
@@ -50,6 +72,11 @@ impl InputHandler{
     pub fn is_pressed(&self, key: KeyCode) -> bool{
         self.pressed_keys.contains(&PhysicalKey::Code(key))
     }
+
+    pub fn is_mouse_pressed(&self, key: MouseButton) -> bool{
+        self.pressed_mouse_keys.contains(&key)
+    }
+
 
     pub fn remove_pressed(&mut self, remove_key: &PhysicalKey){
         self.pressed_keys.remove(remove_key);

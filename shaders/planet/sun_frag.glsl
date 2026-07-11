@@ -1,11 +1,9 @@
 #version 330 core
 
-in vec3 v_position;
-in vec3 v_normal;
+in vec3 v_color;
 in vec2 v_tex_coords;
 
-
-uniform float u_time;
+uniform float u_time = 1.0;
 uniform float radius;
 uniform sampler2D tex;
 uniform vec3 u_light = vec3(0.0,0.0,0.0);
@@ -21,13 +19,7 @@ const vec3 specular_color = vec3(1.0, 1.0, 0.0);
 
 void main() {
 
-	// diffuse
-	vec3 normal = normalize(v_normal);
-	vec3 light =  u_light - v_position;
-	vec3 lightDir = 2.0*normalize(light - v_position);
-	float diffuse = max(dot(normal, lightDir), 0.0);
-	float diffuse_toon = max(ceil(diffuse * float(color_steps)) / float(color_steps), 0.0);
-	
-	vec4 toonColor = vec4(diffuse_toon * diffuse_color, 1.0);
+    vec4 toonColor = vec4(v_color,1.0);
     color = toonColor*texture(tex,v_tex_coords);
 }
+

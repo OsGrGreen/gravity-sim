@@ -10,16 +10,27 @@ use physics::PhysicsObject;
 
 use crate::rendering::{render::Renderer, render_camera::RenderCamera};
 
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+pub struct ObjectId {
+    pub index: usize,
+}
+
+impl ObjectId{
+    pub fn new(index: usize) -> ObjectId{
+        return ObjectId { index:index }
+    }
+}
+
 pub struct WorldObject{
-    pub id: String,
+    pub id: ObjectId,
     pub render_object: RenderObject,
     pub physics_object: Box<dyn PhysicsObject>
 }
 
 impl WorldObject{
-    pub fn new(name: String, render: RenderObject, physics: Box<dyn PhysicsObject>) -> WorldObject{
+    pub fn new(index: usize, render: RenderObject, physics: Box<dyn PhysicsObject>) -> WorldObject{
         let mut wo = WorldObject{
-            id: name,
+            id: ObjectId { index: index },
             render_object: render,
             physics_object: physics,
         };
@@ -27,11 +38,11 @@ impl WorldObject{
         return wo;
     } 
 
-   pub fn draw(&mut self, fbo: &mut SimpleFrameBuffer<'_>, camera: &RenderCamera, renderer: &Renderer, texture: &mut Option<&Texture2d>){
+   pub fn draw(&mut self, fbo: &mut SimpleFrameBuffer<'_>, camera: &RenderCamera, renderer: &Renderer, texture: &mut Option<&Texture2d>, time: f32){
     if texture.is_none(){
-        self.render_object.draw(fbo, camera, renderer);
+        self.render_object.draw(fbo, camera, renderer, time);
     }else{
-        self.render_object.draw_with_texture(fbo, camera, renderer, texture.unwrap());
+        self.render_object.draw_with_texture(fbo, camera, renderer, texture.unwrap(), time);
     }
    }
 

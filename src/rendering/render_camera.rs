@@ -4,6 +4,8 @@ use core::f32;
 use glam::{Mat4, Quat, Vec3, Vec4, Vec4Swizzles};
 use winit::window::Window;
 
+use crate::scene::objects::ObjectId;
+
 use super::render::calculate_perspective;
 
 
@@ -16,6 +18,7 @@ pub struct RenderCamera{
     radius: f32,
     pub perspective: Mat4,
     pub matrix: Mat4,
+    following: Option<ObjectId>
 }
 
 const SQRT3:f32 = 1.7320508;
@@ -24,17 +27,29 @@ impl RenderCamera{
 
     pub fn new(start_pos: Vec3, target:Vec3, up:Vec3, front:Vec3, dim: (f32, f32)) -> RenderCamera{
 
-        let mut camera = RenderCamera{pos:start_pos,target:target,up:up, front:front, perspective:Mat4::ZERO, orientation : Quat::IDENTITY, radius: 20.0, matrix: Mat4::ZERO};
+        let mut camera = RenderCamera{pos:start_pos,target:target,up:up, front:front, perspective:Mat4::ZERO, orientation : Quat::IDENTITY, radius: 20.0, matrix: Mat4::ZERO, following: None};
         camera.matrix = camera.look_at();
         camera.perspective = calculate_perspective(dim);
         return camera;
     }
 
     pub fn init(dim: (f32, f32)) -> RenderCamera{
-        let mut camera = RenderCamera{pos:Vec3::ZERO,target:Vec3::new(0.0, 0.0, -2.0),up:Vec3::new(0.0, 1.0, 0.0), front:Vec3::new(0.0, 0.0, -1.0), perspective:Mat4::ZERO, orientation : Quat::IDENTITY, radius: 20.0, matrix: Mat4::ZERO};
+        let mut camera = RenderCamera{pos:Vec3::ZERO,target:Vec3::new(0.0, 0.0, -2.0),up:Vec3::new(0.0, 1.0, 0.0), front:Vec3::new(0.0, 0.0, -1.0), perspective:Mat4::ZERO, orientation : Quat::IDENTITY, radius: 20.0, matrix: Mat4::ZERO, following: None};
         camera.matrix = camera.look_at();
         camera.perspective = calculate_perspective(dim);
         return camera;
+    }
+
+    pub fn get_following(&self) -> ObjectId {
+        return self.following.unwrap()
+    }
+
+    pub fn set_following(&mut self, id: ObjectId){
+        self.following = Some(id);
+    }
+
+    pub fn is_following(&self) -> bool{
+        self.following.is_some()
     }
 
     pub fn update(&mut self, yaw_updated: f32, pitch_updated: f32){
@@ -84,7 +99,8 @@ impl RenderCamera{
 
 
     pub fn getMatrix(&self) -> [[f32; 4]; 4] {
-        let pos = self.get_position();
+        let pos = self.pos;
+        println!("Matrix posistion is: {}", pos);
         let forward = (self.target - pos).normalize();
 
         // Derive right and up from orientation

@@ -15,17 +15,6 @@ out vec2 v_tex_coords;
 void main() {
     mat4 modelview = view * model;
 
-    vec3 center_pos = vec3(model[0][3],model[1][3],model[2][3]);
-
-    vec3 right = vec3(view[0][0], view[1][0], view[2][0]);
-    vec3 up = vec3(view[0][1], view[1][1], view[2][1]);
-
-    // Calculate the billboard's vertex positions
-    vec3 billboard_pos = center_pos
-        + (right * (position.x)/2)
-        + (up * (position.y)/2);
-
-    // world-space position of vertex
     vec4 world_pos = model * vec4(position, 1.0);
     v_position = world_pos.xyz;
 

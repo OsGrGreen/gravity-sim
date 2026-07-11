@@ -1,4 +1,4 @@
-use glam::{Mat4, Vec3};
+use glam::{Mat4, Vec3, Vec4};
 pub mod point;
 pub mod renderobjects;
 
@@ -47,6 +47,13 @@ impl ModelObject{
     pub fn get_posistion(&self) -> Vec3{
         let translation = self.translation.col(3);
         Vec3::new(translation.x, translation.y,translation.z)
+    }
+
+    // REDO THIS
+    pub fn set_posistion(&mut self, new_pos: Vec3){
+        let n_pos = Vec4::from_array([new_pos.x,new_pos.y,new_pos.z,1.0]);
+        let new_trans = Mat4::from_cols(self.translation.col(0), self.translation.col(1), self.translation.col(2), n_pos);
+        self.translation = new_trans;
     }
 
 

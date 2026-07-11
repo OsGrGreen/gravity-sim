@@ -126,8 +126,8 @@ fn main() {
     let mut frames:f32 = 0.0;
 
 
-
-    let mut return_scene = Scene::init_gravity_scene(&window, &display, (window.inner_size().width/4, window.inner_size().height/4));
+    //Scene::init_gravity_scene(&window, &display, (window.inner_size().width/4, window.inner_size().height/4));
+    let mut return_scene = Scene::init_flight_scene(&window, &display, (window.inner_size().width/4, window.inner_size().height/4));
     //scene_test.new_object(render_name, &display, vertex_data, fragment_data, obj_data)
     let _ = event_loop.run(move |event, window_target| {
         match event {
@@ -148,9 +148,10 @@ fn main() {
                         _ => {}
                     }
             }
-            winit::event::WindowEvent::MouseInput { device_id: _, state, button } =>{
-
+            winit::event::WindowEvent::MouseInput { device_id, state, button } =>{
+                input_handler.update_mouse_click(device_id, state, button);
             }
+            
 
             // TODO
             // Make input a little bit nicer
@@ -184,7 +185,7 @@ fn main() {
 
                 while accumulator >= dt {
                     let physicsTimer = Instant::now();
-                    return_scene.update_physics(dt);
+                    return_scene.update_physics(dt, &input_handler);
                     return_scene.update_camera(dt, &input_handler);
                     ////println!("Physics: {:.2?}", physicsTimer.elapsed());
                     t += dt;

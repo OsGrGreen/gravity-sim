@@ -98,20 +98,14 @@ impl <'b>Renderer<'b>{
             }
         }
 
-        pub fn init<'a>(display: &Display<WindowSurface>, vertex_data: &[u8], fragment_data: &[u8], obj_data: &[u8]) -> Result<Renderer<'b>, &'a str>{
+        pub fn init<'a>(display: &Display<WindowSurface>, vertex_data: &[u8], fragment_data: &[u8], obj_data: &[u8], params: Option<DrawParameters<'b>>) -> Result<Renderer<'b>, &'a str>{
             let vertex_shader = read_shader(vertex_data);
             let fragment_shader = read_shader(fragment_data);
             let (vertecies, indices) = read_model(obj_data);
             let vbo = glium::VertexBuffer::new(display, &vertecies).unwrap();
             let indicies = glium::IndexBuffer::new(display,glium::index::PrimitiveType::TrianglesList,&indices).unwrap();
             let program = glium::Program::from_source(display, vertex_shader, fragment_shader, None).unwrap();
-
-            Ok(Renderer{
-                vbo: vbo.into(),
-                indicies: indicies,
-                program: program,
-                is_dynamic: false,
-                draw_params: glium::DrawParameters {
+            let defaultParams = glium::DrawParameters {
                     depth: glium::Depth {
                         test: glium::DepthTest::IfLess,
                         write: true,
@@ -119,7 +113,13 @@ impl <'b>Renderer<'b>{
                     },
                     backface_culling: glium::draw_parameters::BackfaceCullingMode::CullCounterClockwise,
                     .. Default::default()
-                },
+                };
+            Ok(Renderer{
+                vbo: vbo.into(),
+                indicies: indicies,
+                program: program,
+                is_dynamic: false,
+                draw_params: params.unwrap_or(defaultParams),
                 used_vbo: 0,
                 used_inds: 0,
             })

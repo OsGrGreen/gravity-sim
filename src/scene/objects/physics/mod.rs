@@ -4,6 +4,7 @@ use sphere::Sphere;
 use super::{renderable::renderobjects::RenderObject, WorldObject};
 
 pub mod sphere;
+pub mod NoPhysics;
 pub mod controllers;
 
 pub trait PhysicsObject{
@@ -21,7 +22,8 @@ pub trait PhysicsObject{
 
 pub fn physics_object_factory(id: usize, data: Vec<f32>) -> Box<dyn PhysicsObject> {
     match id {
-        0 => {assert!(data.len() == 2); Box::new(Sphere::new(data))}, 
-        _ => panic!("Unknown shape"),
+        0  => {assert!(data.len() == 2); Box::new(Sphere::new(data))}, 
+        1 => {Box::new(NoPhysics::NoPhysics::new())}, 
+        _  => panic!("Unknown shape"),
     }
 }
