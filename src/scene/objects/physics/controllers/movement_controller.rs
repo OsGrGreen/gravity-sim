@@ -1,7 +1,7 @@
 
 use glam::{Quat, Vec3, Vec4};
 
-use crate::{scene::objects::{ObjectId, WorldObject}, util::input_handler::InputHandler};
+use crate::{scene::{Scene, SceneContent, objects::{ObjectId, WorldObject}}, util::input_handler::InputHandler};
 
 use super::Controller;
 
@@ -22,7 +22,8 @@ impl<T: MovementType> Movement<T>{
 }
 
 impl<T: MovementType>  Controller for Movement<T>{
-    fn update(&mut self, objects: &mut Vec<crate::scene::objects::WorldObject>, input: &InputHandler) {
+    fn update(&mut self, scene: &mut SceneContent, input: &InputHandler) {
+        let mut objects = scene.objects();
         for id in &self.ids {
             let object = &mut objects[id.index];
             self.mover.change_movement(object, input);
@@ -76,7 +77,7 @@ impl MovementType for PlayerMover{
 
         // Bound to max
 
-        world_object.physics_object.set_force(force);
+        world_object.physics.set_force(force);
         //println!("Movement is x: {}, y: {}", input.get_movement().x, input.get_movement().y);
     }
 }

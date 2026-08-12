@@ -39,6 +39,13 @@ impl InputHandler{
         self.mouse_pos = pos;
     }
 
+    fn convert_to_screen(pos: Vec2, size: &PhysicalSize<u32>) -> Vec2{
+        Vec2::new(
+        (pos.x * 0.5 + 0.5) * size.width as f32,
+        (-pos.y * 0.5 + 0.5) * size.height as f32,
+    )
+    }
+
     fn convert_to_ndc(pos: PhysicalPosition<f64>, size: &PhysicalSize<u32>) -> Vec2{
         Vec2::new((pos.x as f32 / size.width as f32) * 2.0 - 1.0,
         - ((pos.y as f32 / size.height as f32) * 2.0 - 1.0))
@@ -47,6 +54,14 @@ impl InputHandler{
     fn convert_vec2_ndc(pos: Vec2, size: &PhysicalSize<u32>) -> Vec2{
         Vec2::new((pos.x as f32 / size.width as f32) * 2.0 - 1.0,
         - ((pos.y as f32 / size.height as f32) * 2.0 - 1.0))
+    }
+
+    pub fn height(&self) -> f32 {
+        self.size.height as f32
+    }
+
+    pub fn width(&self) -> f32 {
+        self.size.width as f32
     }
 
     pub fn pos(&self) -> Vec2{
@@ -59,6 +74,10 @@ impl InputHandler{
 
     pub fn ndc_pos(&self) -> Vec2 {
         Self::convert_vec2_ndc(self.pos(), &self.size)
+    }
+
+    pub fn screen_pos(&self) -> Vec2 {
+        Self::convert_to_screen(self.mouse_pos, &self.size)
     }
 
     pub fn get_movement(&self) -> Vec2{

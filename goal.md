@@ -1,3 +1,16 @@
+
+## Todo
+
+-[] FTL travel (reduved gravity)
+-[] Trade-sim things (complicated ig)
+-[] Add minimap
+-[] Better movement
+-[] Better controls
+-[] Add dithering
+-[] Improve visuals
+-[] Create a view consisting of many different frames..
+
+
 ## Game
 
 

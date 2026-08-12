@@ -1,29 +1,101 @@
 use glam::Vec3;
-use sphere::Sphere;
 
-use super::{renderable::renderobjects::RenderObject, WorldObject};
+use crate::scene::objects::{physics::bodies::StaticBody, transform::Transform};
 
-pub mod sphere;
-pub mod NoPhysics;
+use bodies::RigidBody;
+
+pub mod bodies;
 pub mod controllers;
 
-pub trait PhysicsObject{
-    fn update_physics(&mut self, dt:f32, model: &mut RenderObject);
-    fn init(&self, model: &mut RenderObject);
-    fn get_collision(&self);
+/*pub trait PhysicsObject{
+    fn update_physics(&mut self, dt:f32, model: &mut Transform);
     fn add_force(&mut self, force: Vec3);
     fn set_force(&mut self, force: Vec3);
-    fn get_mass(&self) -> f32;
-    fn set_init_velocity(&mut self, vel: Vec3);
-    fn collides(&self, dist: f32, obj2: &WorldObject) -> bool;
-    fn get_size(&self) -> f32;
+    fn mass(&self) -> f32;
+    fn set_velocity(&mut self, vel: Vec3);
+}*/
+
+pub enum PhysicsObject {
+    RigidBody(RigidBody),
+    StaticBody(StaticBody),
+    Nothing()
+    // KinematicBody(KinematicBody),
 }
 
+impl PhysicsObject {
 
-pub fn physics_object_factory(id: usize, data: Vec<f32>) -> Box<dyn PhysicsObject> {
-    match id {
-        0  => {assert!(data.len() == 2); Box::new(Sphere::new(data))}, 
-        1 => {Box::new(NoPhysics::NoPhysics::new())}, 
-        _  => panic!("Unknown shape"),
+    pub fn rigid_body(mass: f32) -> Self {
+        PhysicsObject::RigidBody(RigidBody::new(mass))
+    }
+
+    pub fn static_body(mass: f32) -> Self {
+        PhysicsObject::StaticBody(StaticBody::new(mass))
+    }
+
+
+    pub fn update_physics(&mut self, dt: f32, transform: &mut Transform) {
+        match self {
+            PhysicsObject::RigidBody(body) => {
+                body.update_physics(dt, transform);
+            }
+            PhysicsObject::StaticBody(_) => (),
+            PhysicsObject::Nothing() => (),
+        }
+    }
+
+    pub fn set_velocity(&mut self, velocity: Vec3) {
+        match self {
+            PhysicsObject::RigidBody(body) => {
+                body.velocity = velocity;
+            }
+            PhysicsObject::StaticBody(_) => (),
+            PhysicsObject::Nothing() => (),
+        }
+    }
+
+    pub fn velocity(&self) -> Vec3 {
+        match self {
+            PhysicsObject::RigidBody(body) => {
+                body.velocity
+            }
+            PhysicsObject::StaticBody(_) => Vec3::ZERO,
+            PhysicsObject::Nothing() => Vec3::ZERO,
+        }
+    }
+
+    pub fn add_force(&mut self, force: Vec3) {
+        match self {
+            PhysicsObject::RigidBody(body) => {
+                body.force += force;
+            }
+            PhysicsObject::StaticBody(_) => (),
+            PhysicsObject::Nothing() => (),
+        }
+    }
+
+    pub fn set_force(&mut self, force: Vec3) {
+        match self {
+            PhysicsObject::RigidBody(body) => {
+                body.force = force;
+            }
+            PhysicsObject::StaticBody(_) => (),
+            PhysicsObject::Nothing() => (),
+        }
+    }
+
+    pub fn mass(&self) -> f32 {
+        match self {
+            PhysicsObject::RigidBody(body) => {
+                body.mass
+            }
+            PhysicsObject::StaticBody(body) => {
+                body.mass
+            },
+            PhysicsObject::Nothing() => 0.0,
+        }
     }
 }
+
+
+
+

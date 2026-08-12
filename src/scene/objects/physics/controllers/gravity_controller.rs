@@ -1,5 +1,5 @@
 
-use crate::{scene::objects::ObjectId, util::input_handler::InputHandler};
+use crate::{scene::{Scene, SceneContent, objects::{self, ObjectId}}, util::input_handler::InputHandler};
 
 use super::Controller;
 
@@ -15,15 +15,16 @@ impl Gravity{
 }
 
 impl Controller for Gravity{
-    fn update(&mut self, objects: &mut Vec<crate::scene::objects::WorldObject>, _: &InputHandler) {
+    fn update(&mut self, scene: &mut SceneContent, _: &InputHandler) {
+        let mut objects = scene.objects();
         for i in 0..objects.len() {
             let (before, after) = objects.split_at_mut(i);
             let (obj1, after) = after.split_first_mut().unwrap(); // Get obj1 from after
             if self.ids.contains(&obj1.id){
                 for obj2 in before.iter().chain(after.iter()) {
                     let (dir, distance) = obj1.distance(obj2);
-                    let force = self.G*(obj1.physics_object.get_mass()*obj2.physics_object.get_mass())/(distance*distance);
-                    obj1.physics_object.add_force(dir.normalize()*force);
+                    let force = self.G*(obj1.physics.mass()*obj2.physics.mass())/(distance*distance);
+                    obj1.physics.add_force(dir.normalize()*force);
                     //Collision
                     if obj1.collides(obj2){
                         //println!("Collision between {:?} and {:?}", obj1,obj2);

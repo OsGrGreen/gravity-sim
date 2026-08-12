@@ -52,6 +52,50 @@ pub fn ray_plane_intersect(p0: Vec3, d: Vec3, q: Vec3, n: Vec3) -> Vec3 {
     intersection_point
 }
 
+
+pub fn mouse_ray(
+    mouse_ndc: Vec2,
+    projection: Mat4,
+    view: Mat4,
+) -> (Vec3, Vec3) {
+    // NDC coordinates at the near and far planes
+    let near = Vec3::new(mouse_ndc.x, mouse_ndc.y, -1.0);
+    let far  = Vec3::new(mouse_ndc.x, mouse_ndc.y,  1.0);
+
+    // NDC -> world space
+    let inv_view_projection = (projection * view).inverse();
+
+    let near_world = inv_view_projection.project_point3(near);
+    let far_world = inv_view_projection.project_point3(far);
+
+    let direction = (far_world - near_world).normalize();
+
+    (near_world, direction)
+}
+
+pub fn ray_plane_intersection(
+    ray_origin: Vec3,
+    ray_direction: Vec3,
+    plane_point: Vec3,
+    plane_normal: Vec3,
+) -> Option<Vec3> {
+    let denominator = ray_direction.dot(plane_normal);
+
+    // Ray is parallel to the plane
+    if denominator.abs() < 0.000001 {
+        return None;
+    }
+
+    let t = (plane_point - ray_origin).dot(plane_normal) / denominator;
+
+    // Intersection is behind the camera
+    if t < 0.0 {
+        return None;
+    }
+
+    Some(ray_origin + ray_direction * t)
+}
+
 pub fn ndc_to_intersection(
     mouse_ndc: &Vec3, 
     camera_matrix: &Mat4, 

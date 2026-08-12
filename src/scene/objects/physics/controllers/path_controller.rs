@@ -1,7 +1,7 @@
 
 use std::time;
 
-use crate::{scene::objects::ObjectId, spline::Spline, util::input_handler::InputHandler};
+use crate::{scene::{Scene, SceneContent, objects::ObjectId}, spline::Spline, util::input_handler::InputHandler};
 
 use super::Controller;
 
@@ -19,12 +19,13 @@ impl Path{
 }
 
 impl Controller for Path{
-    fn update(&mut self, objects: &mut Vec<crate::scene::objects::WorldObject>, _: &InputHandler) {
+    fn update(&mut self, scene: &mut SceneContent, _: &InputHandler) {
+        let mut objects = scene.objects();
         for id in &self.ids {
             let obj = &mut objects[id.index];
             let new_pos = self.spline.evaluate(self.t);
-            let current_pos = obj.render_object.model_object.get_posistion();
-            obj.render_object.model_object.set_posistion(new_pos);
+            let current_pos = obj.transform.position;
+            obj.transform.set_position(new_pos);
             //obj.physics_object.set_force(new_pos-current_pos);
             self.t += self.timestep;
             if self.t + self.timestep >= self.spline.len() as f32{

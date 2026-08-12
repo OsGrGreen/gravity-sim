@@ -4,7 +4,7 @@ extern crate winit;
 
 use rand::Rng;
 use glam::{Mat4, Vec2, Vec3};
-use scene::{objects::{physics::physics_object_factory, renderable::{point::WorldPoint, renderobjects::RenderObject}, WorldObject}, Scene};
+use scene::{objects::{renderable::{point::WorldPoint}, WorldObject}, Scene};
 use util::{create_fbo, create_render_textures, input_handler::InputHandler, load_icon, ray_library::{distance_ray_point, ndc_to_direction, ndc_to_point}, read_model};
 use winit::{event::{MouseButton, MouseScrollDelta}, event_loop::{ControlFlow, EventLoop}, keyboard, window::{Fullscreen, Window}};
 use glium::{framebuffer::SimpleFrameBuffer, glutin::surface::WindowSurface, implement_vertex, index::PrimitiveType, texture::DepthTexture2d, uniforms::{MagnifySamplerFilter, MinifySamplerFilter}, Blend, BlendingFunction, Display, LinearBlendingFactor, Surface, Texture2d, VertexBuffer};
@@ -74,7 +74,7 @@ fn main() {
 
     /*Loading the shaders from the files */
     let low_res_vert = util::read_shader(include_bytes!(r"../shaders/resolution/vert.glsl"));
-    let low_res_frag = util::read_shader(include_bytes!(r"../shaders/resolution/frag.glsl"));
+    let low_res_frag = util::read_shader(include_bytes!(r"../shaders/resolution/frag_with_dither.glsl"));
 
     /*Draw paramters for the different renderers */
     /*For example if a line or not */
@@ -127,7 +127,7 @@ fn main() {
 
 
     //Scene::init_gravity_scene(&window, &display, (window.inner_size().width/4, window.inner_size().height/4));
-    let mut return_scene = Scene::init_flight_scene(&window, &display, (window.inner_size().width/4, window.inner_size().height/4));
+    let mut return_scene = Scene::init_slingshot_scene(&window, &display, (640, 360));
     //scene_test.new_object(render_name, &display, vertex_data, fragment_data, obj_data)
     let _ = event_loop.run(move |event, window_target| {
         match event {
