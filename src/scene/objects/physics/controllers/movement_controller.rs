@@ -1,12 +1,12 @@
 
 use glam::{Quat, Vec3, Vec4};
 
-use crate::{scene::{Scene, SceneContent, objects::{ObjectId, WorldObject}}, util::input_handler::InputHandler};
+use crate::{scene::{Scene, SceneContent, objects::{ObjectId, SceneObject, WorldObject}}, util::input_handler::InputHandler};
 
 use super::Controller;
 
 pub trait MovementType {
-    fn change_movement(&mut self, world_object: &mut WorldObject, input: &InputHandler);
+    fn change_movement(&mut self, world_object: &mut SceneObject, input: &InputHandler);
 }
 
 
@@ -32,12 +32,12 @@ impl<T: MovementType>  Controller for Movement<T>{
     
     fn add(&mut self, objects: Vec<&crate::scene::objects::WorldObject>) {
         for obj in objects{
-            self.ids.push(obj.id.clone());
+            self.ids.push(obj.data.id.clone());
         }
     }
 
     fn add_single(&mut self, object: &crate::scene::objects::WorldObject) {
-        self.ids.push(object.id);
+        self.ids.push(object.data.id);
     }
 }
 
@@ -50,10 +50,8 @@ impl PlayerMover{
     pub fn new() -> PlayerMover {
         PlayerMover {thrust: 0.0, orientation:Quat::IDENTITY} 
     }
-}
 
-impl MovementType for PlayerMover{
-    fn change_movement(&mut self, world_object: &mut WorldObject, input: &InputHandler) {
+    fn move_world(&mut self, world_object: &mut WorldObject, input: &InputHandler) {
         // Read user-input
 
         // Get target force
@@ -78,6 +76,14 @@ impl MovementType for PlayerMover{
         // Bound to max
 
         world_object.physics.set_force(force);
-        //println!("Movement is x: {}, y: {}", input.get_movement().x, input.get_movement().y);
+    }
+}
+
+impl MovementType for PlayerMover{
+    fn change_movement(&mut self, world_object: &mut SceneObject, input: &InputHandler) {
+        match world_object {
+            SceneObject::World(world_object) => self.move_world(world_object, input),
+            _ => (),
+        }
     }
 }

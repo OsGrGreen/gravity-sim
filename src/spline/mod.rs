@@ -5,6 +5,7 @@ use glium::{glutin::{api::wgl::display, surface::WindowSurface}, index::Primitiv
 
 use crate::{assetmanager::RenderManager, rendering::{self, render::{Renderer, VertexSimple}}, util};
 
+#[derive(Debug)]
 pub struct BezierCurve{
     control_points: [Vec3; 4],
 }
@@ -26,6 +27,7 @@ impl BezierCurve{
     }
 }
 
+#[derive(Debug)]
 pub struct Spline{
     curves: Vec<BezierCurve>,
 }

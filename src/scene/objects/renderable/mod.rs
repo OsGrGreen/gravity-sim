@@ -1,9 +1,9 @@
-use std::println;
+use std::{any::Any, println};
 
-use glam::Vec3;
-use glium::{framebuffer::SimpleFrameBuffer, uniforms::MagnifySamplerFilter, Surface, Texture2d, Vertex, VertexBuffer};
+use glam::{Mat4, Vec3};
+use glium::{Display, IndexBuffer, Surface, Texture2d, Vertex, VertexBuffer, framebuffer::SimpleFrameBuffer, glutin::surface::WindowSurface, index::{IndicesSource, PrimitiveType}, uniforms::MagnifySamplerFilter, vertex::VerticesSource};
 
-use crate::{assetmanager::{RenderManager, handles::{MaterialHandle, MeshHandle}}, rendering::{RenderContext, render::{Renderer, VertexSimple}, render_camera::RenderCamera}, scene::objects::transform::Transform};
+use crate::{assetmanager::{RenderManager, handles::{MaterialHandle, MeshHandle}}, rendering::{RenderContext, render::{Renderer, VertexSimple}, render_camera::RenderCamera}, scene::objects::transform::Transform, spline::Spline};
 
 pub mod point;
 
@@ -15,6 +15,8 @@ pub trait Renderable {
         context: &mut RenderContext,
         manager: &RenderManager,
     );
+
+    fn as_any(&mut self) -> &mut dyn Any;
 }
 
 //I should probably make the renderobjects save the VBO and indicies and not the renderer...
@@ -60,7 +62,64 @@ impl Renderable for MeshRenderer {
         }
         //}
     }
+    
+    fn as_any(&mut self) -> &mut dyn Any {
+        self
+    }
 }
+
+pub struct SplineRenderer {
+    pub render_id: String,
+    vertices: VertexBuffer<VertexSimple>,
+    indices: IndexBuffer<u16>,
+}
+
+impl SplineRenderer {
+    pub fn new(id: String, spline: &Spline, manager: &mut RenderManager, display: &Display<WindowSurface>, ) -> SplineRenderer {
+        let (vertices, indices, renderer) = spline.spline_renderer(display, manager);
+        manager.add_renderer(id.clone(), renderer);
+        SplineRenderer {
+            render_id: id,
+            vertices,
+            indices,
+        }
+    }
+
+    pub fn update(&mut self, spline: &Spline){
+        self.vertices.write(&spline.to_vertex());
+        self.indices.write(&spline.get_indicies());
+    }
+}
+
+impl Renderable for SplineRenderer{
+    fn render(
+        &self,
+        transform: &Transform,
+        context: &mut RenderContext,
+        manager: &RenderManager,
+    ) {
+        let possible_renderer = manager.renderers.get(&self.render_id);
+        if let Some(renderer) = possible_renderer {
+            let possible_material = manager.materials.get(&renderer.material);
+            if let Some(material) = possible_material {
+                let fbo = &mut context.framebuffer;
+                let camera = context.camera;
+                fbo.draw(&self.vertices, &self.indices, &material.program, &uniform! {u_screenSize: [640, 360], u_thickness: 50.0 as f32, steps: 48.0 as f32, model: Mat4::IDENTITY.to_cols_array_2d(), projection: camera.perspective.to_cols_array_2d(), view:camera.getMatrix()}, &material.draw_params).unwrap();
+            }
+        }
+    }
+
+    fn as_any(&mut self) -> &mut dyn Any {
+        self
+    }
+}
+
+pub struct LineRenderer<'a> {
+    pub render_id: String,
+    pub point_a: &'a Transform,
+    pub point_b: &'a Transform
+}
+
 
 /*impl RenderObject<>{
 

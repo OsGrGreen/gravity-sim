@@ -8,7 +8,7 @@ use objects::{physics::{PhysicsObject}, renderable::RenderObject, WorldObject};
 use rand::Rng;
 use winit::{event::MouseButton, keyboard, window::Window};
 
-use crate::{assetmanager::RenderManager, rendering::{RenderContext, render::{self, Renderer}, render_camera::RenderCamera}, scene::objects::{ObjectId, physics::{bodies::{RigidBody, StaticBody}, controllers::{self, Controller, gravity_controller::Gravity, movement_controller::{Movement, PlayerMover}, path_controller::{self, Path}}}, renderable::{MeshRenderer, Renderable}, transform::Transform}, spline::Spline, util::{create_fbo, create_render_textures, input_handler::{self, InputHandler}, load_texture}};
+use crate::{assetmanager::RenderManager, rendering::{RenderContext, render::{self, Renderer}, render_camera::RenderCamera}, scene::objects::{ObjectId, SceneObject, SceneObjectBehaviour, physics::{bodies::{RigidBody, StaticBody}, controllers::{self, Controller, gravity_controller::Gravity, movement_controller::{Movement, PlayerMover}, path_controller::{self, Path}}}, renderable::{MeshRenderer, Renderable}, transform::Transform}, spline::Spline, util::{create_fbo, create_render_textures, input_handler::{self, InputHandler}, load_texture}};
 
 pub mod bezier_surface;
 pub mod objects;
@@ -17,7 +17,7 @@ pub mod slingshot_scene;
 
 pub struct SceneContent {
     time: f32,
-    world_objects: Vec<WorldObject>,
+    world_objects: Vec<SceneObject>,
     lights: Vec<Light>,
     pub camera: RenderCamera,
 }
@@ -65,19 +65,19 @@ impl Scene{
         let renderer = Renderer::init(&mut self.render_manager, display, vertex_data, fragment_data, obj_data, None).unwrap();
         self.render_manager.add_renderer(render_name.to_string(), renderer);
         let obj = WorldObject::new(self.content.world_objects.len(), Transform::new(),Some(Box::new(MeshRenderer::new(render_name.to_string()))), PhysicsObject::RigidBody(RigidBody::new(1.0)), None);
-        self.content.world_objects.push(obj);
+        self.content.world_objects.push(SceneObject::World(obj));
         return self.content.world_objects.len() - 1;
     }
     
 
     pub fn new_object_instance(&mut self, object_name: &str,render_name: &str) -> usize{
         let obj = WorldObject::new(self.content.world_objects.len(), Transform::new(),Some(Box::new(MeshRenderer::new(render_name.to_string()))), PhysicsObject::RigidBody(RigidBody::new(1.0)), None);
-        self.content.world_objects.push(obj);
+        self.content.world_objects.push(SceneObject::World(obj));
         return self.content.world_objects.len() - 1;
     }
     
     pub fn add_object(&mut self, obj: WorldObject) -> usize{
-        self.content.world_objects.push(obj);
+        self.content.world_objects.push(SceneObject::World(obj));
         return self.content.world_objects.len() - 1;
     }
 
@@ -88,8 +88,8 @@ impl Scene{
     pub fn update_camera(&mut self, dt: f32, input_handler: &InputHandler){
         //println!("mouse pos: {}", input_handler.pos());
         if self.content.camera.is_following() {
-            println!("Following {} at {}", self.content.camera.get_following().index, self.content.world_objects[self.content.camera.get_following().index].transform.position);
-            self.content.camera.set_pos(self.content.world_objects[self.content.camera.get_following().index].transform.position);
+            println!("Following {} at {}", self.content.camera.get_following().index, self.content.world_objects[self.content.camera.get_following().index].transform().position);
+            self.content.camera.set_pos(self.content.world_objects[self.content.camera.get_following().index].transform().position);
         } else {
             if input_handler.is_mouse_pressed(MouseButton::Left){
                 let mut yaw = 0.0;
@@ -114,7 +114,7 @@ impl Scene{
         
         for obj in &mut self.content.world_objects{
             obj.update_physics(dt);
-        }
+        }   
     }
 
     pub fn init_flight_scene(window: &Window, display: &Display<WindowSurface>, size: (u32,u32)) -> Scene{
@@ -143,19 +143,19 @@ impl Scene{
         render_manager.add_renderer("skybox".to_string(), skybox_renderer);
         
         let mut player = WorldObject::new(0,  Transform::new(), Some(Box::new(MeshRenderer::new("player".to_string()))), PhysicsObject::RigidBody(RigidBody::new(1.0)), None);
-        player.transform.translate(Vec3::new(1.0, 0.0, 5.0));
+        player.data.transform.translate(Vec3::new(1.0, 0.0, 5.0));
 
          let mut planet1 = WorldObject::new(1, Transform::new(), Some(Box::new(MeshRenderer::new("light".to_string()))), PhysicsObject::RigidBody(RigidBody::new(2.0)), None);
-        planet1.transform.translate(Vec3::new(0.0, 0.0, 0.0));
+        planet1.data.transform.translate(Vec3::new(0.0, 0.0, 0.0));
 
         let mut player_movement: Movement<PlayerMover> = Movement::new(PlayerMover::new());
         player_movement.add_single(&player);
         
         let mut skybox = WorldObject::new(2, Transform::new(), Some(Box::new(MeshRenderer::new("skybox".to_string()))), PhysicsObject::StaticBody(StaticBody::new(0.0)), None);
-        skybox.transform.scale(Vec3::new(40.0, 40.0, 40.0));
+        skybox.data.transform.scale(Vec3::new(40.0, 40.0, 40.0));
                 
 
-        let things = vec![player, planet1, skybox];
+        let things: Vec<SceneObject> = vec![SceneObject::World(player), SceneObject::World(planet1), SceneObject::World(skybox)];
 
 
         let (world_texture, depth_world_texture) = create_render_textures(&display,size.0, size.1);
@@ -193,22 +193,22 @@ impl Scene{
         render_manager.add_renderer("skybox".to_string(), skybox_renderer);
         
         let mut sun = WorldObject::new(0, Transform::new(), Some(Box::new(MeshRenderer::new("light".to_string()))), PhysicsObject::RigidBody(RigidBody::new(50_000.0)), None);
-        sun.transform.translate(Vec3::new(0.0, 0.0, 0.0));
+        sun.data.transform.translate(Vec3::new(0.0, 0.0, 0.0));
         
         let mut planet1 = WorldObject::new(1, Transform::new(),Some(Box::new(MeshRenderer::new("planet".to_string()))), PhysicsObject::RigidBody(RigidBody::new(2.0)), None);
-        planet1.transform.translate(Vec3::new(-5.0, -3.0, 2.0));
+        planet1.data.transform.translate(Vec3::new(-5.0, -3.0, 2.0));
         planet1.physics.set_velocity(Vec3::new(0.0, 3.0, 1.0));
         
         let mut planet2 = WorldObject::new(2, Transform::new(),Some(Box::new(MeshRenderer::new("planet".to_string()))), PhysicsObject::RigidBody(RigidBody::new(1.0)), None);
-        planet2.transform.translate(Vec3::new(-7.0, 3.0, 0.0));
+        planet2.data.transform.translate(Vec3::new(-7.0, 3.0, 0.0));
         planet2.physics.set_velocity(Vec3::new(1.0, 4.0, 0.0));
         
         let mut planet3 = WorldObject::new(3, Transform::new(),Some(Box::new(MeshRenderer::new("planet".to_string()))), PhysicsObject::RigidBody(RigidBody::new(5.0)), None);
-        planet3.transform.translate(Vec3::new(5.0, -4.0, 0.0));
+        planet3.data.transform.translate(Vec3::new(5.0, -4.0, 0.0));
         planet3.physics.set_velocity(Vec3::new(1.5, 2.0, 0.0));
 
         let mut skybox = WorldObject::new(4, Transform::new(), Some(Box::new(MeshRenderer::new("skybox".to_string()))), PhysicsObject::StaticBody(StaticBody::new(1.0)), None);
-        skybox.transform.scale(Vec3::new(40.0, 40.0, 40.0));
+        skybox.data.transform.scale(Vec3::new(40.0, 40.0, 40.0));
 
         let mut gravity = Gravity::new(6.67e-5);
         gravity.add(vec![&planet1, &planet2, &planet3]);
@@ -222,14 +222,14 @@ impl Scene{
 
         //path_controller.add(vec![&sun]);
 
-        let mut solar_system = vec![sun, planet1, planet2, planet3, skybox];
+        let mut solar_system = vec![SceneObject::World(sun), SceneObject::World(planet1), SceneObject::World(planet2), SceneObject::World(planet3), SceneObject::World(skybox)];
 
         let mut rng = rand::rng();
         for i in 0..0{
             let mut add_planet = WorldObject::new(5+i, Transform::new(),Some(Box::new(MeshRenderer::new("planet".to_string()))), PhysicsObject::RigidBody(RigidBody::new(rng.random_range(0.1..20.0))), None);
-            add_planet.transform.translate(Vec3::new(rng.random_range(-5.5..5.5), rng.random_range(-5.5..5.5), 0.0));
+            add_planet.data.transform.translate(Vec3::new(rng.random_range(-5.5..5.5), rng.random_range(-5.5..5.5), 0.0));
             add_planet.physics.set_velocity(Vec3::new(rng.random_range(-1.5..1.5), rng.random_range(-2.0..2.0), 0.0));
-            solar_system.push(add_planet);
+            solar_system.push(SceneObject::World(add_planet));
         }
 
         let (world_texture, depth_world_texture) = create_render_textures(&display,size.0, size.1);
@@ -244,13 +244,13 @@ impl Scene{
         return return_scene;
     }
 
-    pub fn objects(&mut self) -> &mut Vec<WorldObject> {
+    pub fn objects(&mut self) -> &mut Vec<SceneObject> {
         &mut self.content.world_objects
     }
 }
 
 impl SceneContent{
-    pub fn objects(&mut self) -> &mut Vec<WorldObject> {
+    pub fn objects(&mut self) -> &mut Vec<SceneObject> {
         &mut self.world_objects
     }
 }

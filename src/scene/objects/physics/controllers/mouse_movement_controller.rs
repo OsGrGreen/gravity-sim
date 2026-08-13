@@ -1,6 +1,6 @@
 use glam::{Mat4, Vec3};
 
-use crate::{scene::{SceneContent, objects::{ObjectId, physics::controllers::Controller}}, util::{input_handler::InputHandler, ray_library::{mouse_ray, ray_plane_intersection}}};
+use crate::{scene::{SceneContent, objects::{ObjectId, SceneObjectBehaviour, physics::controllers::Controller}}, util::{input_handler::InputHandler, ray_library::{mouse_ray, ray_plane_intersection}}};
 
 pub struct MouseDragController{
     ids: Vec<ObjectId>
@@ -37,18 +37,18 @@ impl Controller for MouseDragController {
                 Vec3::Z,
             ){
                 println!("Intersection is: {}", intersection);
-                object.transform.set_position(intersection);
+                object.data_mut().transform.set_position(intersection);
             }
         };
     }
 
     fn add(&mut self, objects: Vec<&crate::scene::objects::WorldObject>) {
         for obj in objects{
-            self.ids.push(obj.id.clone());
+            self.ids.push(obj.data.id.clone());
         }
     }
 
     fn add_single(&mut self, object: &crate::scene::objects::WorldObject) {
-        self.ids.push(object.id);
+        self.ids.push(object.data.id);
     }
 }
