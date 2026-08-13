@@ -8,7 +8,7 @@ use winit::window::Window; */
 use glam::Mat4;
 use glium::{glutin::surface::WindowSurface, program::TransformFeedbackMode, uniforms::{AsUniformValue, Uniforms, UniformsStorage}, Display, DrawParameters, Frame, Program, Surface, VertexBuffer};
 
-use crate::util::{read_model, read_shader};
+use crate::{assetmanager::{RenderManager, handles::{MaterialHandle, MeshHandle}}, rendering::{Material, Mesh}, util::{read_model, read_shader}};
 
 use super::{text::RenderedText};
 
@@ -27,17 +27,9 @@ pub struct Vertex {
 }
 implement_vertex!(Vertex, position,normal,tex_coords);
 
-pub struct Renderer<'b>
-    {
-        // What to be rendered (Verts)
-        // Make these be able to render any Vertex type again since saving normal and tex_coords for line is kina overkill...
-        // pub vbo: VertexBuffer<T>
-        pub vbo: VertexBuffer<Vertex>,
-        // How to be rendered (Indicies) (Kan behöva öka från u16 till u32)
-        pub indicies: glium::IndexBuffer<u16>,
-        // The program to render it
-        pub program: Program,
-        pub draw_params: DrawParameters<'b>,
+pub struct Renderer {
+        pub mesh: MeshHandle,
+        pub material: MaterialHandle,
         pub is_dynamic: bool,
         used_vbo: usize,
         used_inds: usize,
@@ -45,8 +37,13 @@ pub struct Renderer<'b>
         // Texture
 }
 
-impl <'b>Renderer<'b>{    
-        pub fn new<'a>(shape: &Vec<Vertex>, inds: &Vec<u16>, prim_type: Option<glium::index::PrimitiveType> ,vert_shader: &'a str, frag_shader: &'a str, geo_shader: Option<&'a str>, tess_ctrl: Option<&'a str>, tess_eval: Option<&'a str>, disp: &Display<WindowSurface>, params: Option<DrawParameters<'b>>, transformFeedback:Option<(Vec<std::string::String>, TransformFeedbackMode)> ) -> Result<Renderer<'b>, &'a str>{
+impl Renderer{    
+
+        pub fn new_from_handles(mesh: MeshHandle, material: MaterialHandle) -> Renderer {
+            Renderer { mesh, material, is_dynamic: false, used_vbo: 0, used_inds: 0 }
+        }
+
+        pub fn new<'a>(assets: &mut RenderManager, shape: &Vec<Vertex>, inds: &Vec<u16>, prim_type: Option<glium::index::PrimitiveType> , vert_shader: &'a str, frag_shader: &'a str, geo_shader: Option<&'a str>, tess_ctrl: Option<&'a str>, tess_eval: Option<&'a str>, disp: &Display<WindowSurface>, params: Option<DrawParameters<'static>>, transformFeedback:Option<(Vec<std::string::String>, TransformFeedbackMode)> ) -> Result<Renderer, &'a str>{
             let shape_len = shape.len();
 
             let vbo = glium::VertexBuffer::new(disp, &shape).unwrap();
@@ -72,33 +69,31 @@ impl <'b>Renderer<'b>{
                 }
                 let indicies = glium::IndexBuffer::new(disp,prim_type.unwrap_or(glium::index::PrimitiveType::TrianglesList),
                 &inds).unwrap();
-
+                let mesh = assets.new_mesh(Mesh::new(vbo, indicies));
+                let material = assets.new_material(Material::new(program, params.unwrap_or(Default::default())));
                 Ok(Renderer{
-                    vbo: vbo.into(),
-                    indicies: indicies,
-                    program: program,
+                    mesh,
+                    material,
                     is_dynamic: false,
-                    draw_params: params.unwrap_or(Default::default()),
                     used_vbo: 0,
                     used_inds: 0,
                 })
             }else{
                 let indicies = glium::IndexBuffer::new(disp,prim_type.unwrap_or(glium::index::PrimitiveType::TrianglesList),
                 &inds).unwrap();
-
+                let mesh = assets.new_mesh(Mesh::new(vbo, indicies));
+                let material = assets.new_material(Material::new(program, params.unwrap_or(Default::default())));
                 Ok(Renderer{
-                    vbo: vbo.into(),
-                    indicies: indicies,
-                    program: program,
+                    mesh,
+                    material,
                     is_dynamic: false,
-                    draw_params: params.unwrap_or(Default::default()),
                     used_vbo: 0,
                     used_inds: 0,
                 })
             }
         }
 
-        pub fn init<'a>(display: &Display<WindowSurface>, vertex_data: &[u8], fragment_data: &[u8], obj_data: &[u8], params: Option<DrawParameters<'b>>) -> Result<Renderer<'b>, &'a str>{
+        pub fn init<'a>(assets: &mut RenderManager, display: &Display<WindowSurface>, vertex_data: &[u8], fragment_data: &[u8], obj_data: &[u8], params: Option<DrawParameters<'static>>) -> Result<Renderer, &'a str>{
             let vertex_shader = read_shader(vertex_data);
             let fragment_shader = read_shader(fragment_data);
             let (vertecies, indices) = read_model(obj_data);
@@ -114,19 +109,19 @@ impl <'b>Renderer<'b>{
                     backface_culling: glium::draw_parameters::BackfaceCullingMode::CullCounterClockwise,
                     .. Default::default()
                 };
+            let mesh = assets.new_mesh(Mesh::new(vbo, indicies));
+            let material = assets.new_material(Material::new(program, params.unwrap_or(defaultParams)));
             Ok(Renderer{
-                vbo: vbo.into(),
-                indicies: indicies,
-                program: program,
+                mesh,
+                material,
                 is_dynamic: false,
-                draw_params: params.unwrap_or(defaultParams),
                 used_vbo: 0,
                 used_inds: 0,
             })
         
         }
 
-        pub fn new_dynamic<'a>(shape: Vec<Vertex>, inds: Vec<u16>, prim_type: Option<glium::index::PrimitiveType> ,vert_shader: &'a str, frag_shader: &'a str, geo_shader: Option<&'a str>, disp: &Display<WindowSurface>, params: Option<DrawParameters<'b>>) -> Result<Renderer<'b>, &'a str>{
+        pub fn new_dynamic<'a>(assets: &mut RenderManager, shape: Vec<Vertex>, inds: Vec<u16>, prim_type: Option<glium::index::PrimitiveType> ,vert_shader: &'a str, frag_shader: &'a str, geo_shader: Option<&'a str>, disp: &Display<WindowSurface>, params: Option<DrawParameters<'static>>) -> Result<Renderer, &'a str>{
             let shape_len = shape.len();
 
             let vbo = glium::VertexBuffer::dynamic(disp, &shape).unwrap();
@@ -144,33 +139,31 @@ impl <'b>Renderer<'b>{
                 }
                 let indicies = glium::IndexBuffer::dynamic(disp,prim_type.unwrap_or(glium::index::PrimitiveType::TrianglesList),
                 &inds).unwrap();
-
+                let mesh = assets.new_mesh(Mesh::new(vbo, indicies));
+                let material = assets.new_material(Material::new(program, params.unwrap_or(Default::default())));
                 Ok(Renderer{
-                    vbo: vbo.into(),
-                    indicies: indicies,
-                    program: program,
+                    mesh,
+                    material,
                     is_dynamic: true,
-                    draw_params: params.unwrap_or(Default::default()),
                     used_vbo: 0,
                     used_inds: 0,
                 })
             }else{
                 let indicies = glium::IndexBuffer::dynamic(disp,prim_type.unwrap_or(glium::index::PrimitiveType::TrianglesList),
                 &inds).unwrap();
-
+                let mesh = assets.new_mesh(Mesh::new(vbo, indicies));
+                let material = assets.new_material(Material::new(program, params.unwrap_or(Default::default())));
                 Ok(Renderer{
-                    vbo: vbo.into(),
-                    indicies: indicies,
-                    program: program,
+                    mesh,
+                    material,
                     is_dynamic: true,
-                    draw_params: params.unwrap_or(Default::default()),
                     used_vbo: 0,
                     used_inds: 0,
                 })
             }
         }
 
-        pub fn new_empty_dynamic<'a>(max_elements: usize, prim_type: Option<glium::index::PrimitiveType> ,vert_shader: &'a str, frag_shader: &'a str, geo_shader: Option<&'a str>, disp: &Display<WindowSurface>, params: Option<DrawParameters<'b>>) -> Result<Renderer<'b>, &'a str>{
+        pub fn new_empty_dynamic<'a>(assets: &mut RenderManager, max_elements: usize, prim_type: Option<glium::index::PrimitiveType> ,vert_shader: &'a str, frag_shader: &'a str, geo_shader: Option<&'a str>, disp: &Display<WindowSurface>, params: Option<DrawParameters<'static>>) -> Result<Renderer, &'a str>{
 
             let vbo:VertexBuffer<Vertex> = glium::VertexBuffer::empty_dynamic(disp, max_elements).unwrap();
 
@@ -181,33 +174,36 @@ impl <'b>Renderer<'b>{
             }
             let indicies = glium::IndexBuffer::dynamic(disp, prim_type.unwrap_or(glium::index::PrimitiveType::TrianglesList), &empty_vec).unwrap();
             indicies.invalidate();
+            let mesh = assets.new_mesh(Mesh::new(vbo, indicies));
+            let material = assets.new_material(Material::new(program, params.unwrap_or(Default::default())));
             Ok(Renderer{
-                    vbo: vbo.into(),
-                    indicies: indicies,
-                    program: program,
+                    mesh,
+                    material,
                     is_dynamic: true,
-                    draw_params: params.unwrap_or(Default::default()),
                     used_vbo: 0,
                     used_inds: 0,
             })
         }
 
-        pub fn draw<T, R>(&self, frame: &mut Frame, draw_parameters: Option<&DrawParameters>, uniforms: Option<&UniformsStorage<T, R>>)
+        pub fn draw<T, R>(&self, assets: &mut RenderManager, frame: &mut Frame, draw_parameters: Option<&DrawParameters>, uniforms: Option<&UniformsStorage<T, R>>)
         where
         T: AsUniformValue,
         R: Uniforms,
         {
-            if uniforms.is_some(){
-                frame.draw(&self.vbo, &self.indicies, &self.program, uniforms.unwrap(),
-                draw_parameters.unwrap_or(&Default::default())).unwrap();
-            }else{
-                frame.draw(&self.vbo, &self.indicies, &self.program, &glium::uniforms::EmptyUniforms,
+            let found_mesh = assets.meshes.get_mut(&self.mesh);
+            let found_materials = assets.materials.get_mut(&self.material);
+            if let Some((mesh, material)) = found_mesh.zip(found_materials) {
+                if uniforms.is_some(){
+                    frame.draw(&mesh.vertices, &mesh.indices, &material.program, uniforms.unwrap(),
                     draw_parameters.unwrap_or(&Default::default())).unwrap();
+                }else{
+                    frame.draw(&mesh.vertices, &mesh.indices, &material.program, &glium::uniforms::EmptyUniforms,
+                        draw_parameters.unwrap_or(&Default::default())).unwrap();
+                }
             }
-                
         }
 
-        pub fn add_part_vao(&mut self, new_vertices: Vec<Vertex>, new_indicies: Vec<u16>){
+        pub fn add_part_vao(&mut self, assets: &mut RenderManager, new_vertices: Vec<Vertex>, new_indicies: Vec<u16>){
 
             //Only allow vao to be modified if VAO is dynamic
         
@@ -217,34 +213,38 @@ impl <'b>Renderer<'b>{
 
                 let end_new_vbo = new_vertices.len()+self.used_vbo;
                 let end_new_indicies = new_indicies.len()+self.used_inds;
-                if end_new_vbo > self.vbo.len() || end_new_indicies > self.indicies.len(){
-                    return;
+                let found_mesh = assets.meshes.get_mut(&self.mesh);
+                if let Some(mesh) = found_mesh {
+                    let vbo = &mut mesh.vertices;
+                    if end_new_vbo > vbo.len() || end_new_indicies > mesh.indices.len(){
+                        return;
+                    }
+                    let update_slice_vbo = vbo.slice_mut(self.used_vbo..end_new_vbo).unwrap();
+                    update_slice_vbo.write(&new_vertices);
+                    let update_slice_indicies = mesh.indices.slice_mut(self.used_inds..end_new_indicies).unwrap();
+                    let mut fixed_inds = vec![];
+                    for inds in new_indicies{
+                        fixed_inds.push(inds+self.used_vbo as u16);
+                    }
+                    update_slice_indicies.write(&fixed_inds);
+                    self.used_vbo = end_new_vbo;
+                    self.used_inds = end_new_indicies;   
                 }
-                let update_slice_vbo = self.vbo.slice_mut(self.used_vbo..end_new_vbo).unwrap();
-                update_slice_vbo.write(&new_vertices);
-                let update_slice_indicies = self.indicies.slice_mut(self.used_inds..end_new_indicies).unwrap();
-                let mut fixed_inds = vec![];
-                for inds in new_indicies{
-                    fixed_inds.push(inds+self.used_vbo as u16);
-                }
-                update_slice_indicies.write(&fixed_inds);
-                self.used_vbo = end_new_vbo;
-                self.used_inds = end_new_indicies;
             }else{
                 return
             }
         }
 
-        pub fn draw_line(&mut self, start_ndc: (f32,f32), end_ndc: (f32,f32), color: Option<[f32;3]>){
+        pub fn draw_line(&mut self, assets: &mut RenderManager, start_ndc: (f32,f32), end_ndc: (f32,f32), color: Option<[f32;3]>){
     
             let new_vertices: Vec<Vertex> = vec![Vertex{position: [start_ndc.0, start_ndc.1, 0.0], normal: color.unwrap_or([1.0,1.0,1.0]), tex_coords: [0.0, 0.0]}, Vertex{position: [end_ndc.0, end_ndc.1, 0.0], normal: color.unwrap_or([1.0,1.0,1.0]), tex_coords: [0.0, 0.0]}];
             let new_indicies = vec![0, 1];
         
-            self.add_part_vao(new_vertices, new_indicies);
+            self.add_part_vao(assets, new_vertices, new_indicies);
         
         }
         
-        pub fn draw_rectangle(&mut self, start_ndc: (f32,f32), width:f32,height:f32, color: Option<[f32;3]>){
+        pub fn draw_rectangle(&mut self, assets: &mut RenderManager, start_ndc: (f32,f32), width:f32,height:f32, color: Option<[f32;3]>){
         
             let new_vertices: Vec<Vertex> = vec![
                     Vertex{position: [start_ndc.0, start_ndc.1, 0.0], normal: color.unwrap_or([1.0,0.0,0.0]), tex_coords: [0.0, 0.0]}, 
@@ -253,10 +253,10 @@ impl <'b>Renderer<'b>{
                     Vertex{position: [start_ndc.0, start_ndc.1+height, 0.0], normal: color.unwrap_or([1.0,1.0,1.0]), tex_coords: [0.0, 0.0]}];
             let new_indicies = vec![0, 2, 1, 0, 2, 3];
         
-            self.add_part_vao(new_vertices, new_indicies);
+            self.add_part_vao(assets, new_vertices, new_indicies);
         }
 
-        pub fn draw_rectangle_with_texture(&mut self, start_ndc: (f32,f32), width:f32,height:f32, color: Option<[f32;3]>, texture_id: u32){
+        pub fn draw_rectangle_with_texture(&mut self, assets: &mut RenderManager, start_ndc: (f32,f32), width:f32,height:f32, color: Option<[f32;3]>, texture_id: u32){
             
             let texture_coords = rectangle_texture_id_to_texture_coords(texture_id);
 
@@ -267,10 +267,10 @@ impl <'b>Renderer<'b>{
                     Vertex{position: [start_ndc.0, start_ndc.1+height, 0.0], normal: color.unwrap_or([1.0,1.0,1.0]), tex_coords: texture_coords[3]}];
             let new_indicies = vec![0, 2, 1, 0, 2, 3];
         
-            self.add_part_vao(new_vertices, new_indicies);
+            self.add_part_vao(assets, new_vertices, new_indicies);
         }
 
-        pub fn draw_rectangle_with_specific_texture(&mut self, start_ndc: (f32,f32), width:f32,height:f32, color: Option<[f32;3]>, texture_coords: [[f32;2];4]){
+        pub fn draw_rectangle_with_specific_texture(&mut self, assets: &mut RenderManager, start_ndc: (f32,f32), width:f32,height:f32, color: Option<[f32;3]>, texture_coords: [[f32;2];4]){
         
             let new_vertices: Vec<Vertex> = vec![
                     Vertex{position: [start_ndc.0, start_ndc.1, 0.0], normal: color.unwrap_or([1.0,1.0,1.0]), tex_coords: texture_coords[0]}, 
@@ -279,15 +279,15 @@ impl <'b>Renderer<'b>{
                     Vertex{position: [start_ndc.0, start_ndc.1+height, 0.0], normal: color.unwrap_or([1.0,1.0,1.0]), tex_coords: texture_coords[3]}];
             let new_indicies = vec![0, 2, 1, 0, 2, 3];
         
-            self.add_part_vao(new_vertices, new_indicies);
+            self.add_part_vao(assets, new_vertices, new_indicies);
         }
 
-        pub fn remove_subset(&mut self, vertex_start: u32, index_start:u32){
+        pub fn remove_subset(&mut self, assets: &mut RenderManager, vertex_start: u32, index_start:u32){
 
         }
         
         //Implement this...
-        pub fn remove_text(&mut self, text: RenderedText){
+        pub fn remove_text(&mut self, assets: &mut RenderManager, text: RenderedText){
 
         }
 }  

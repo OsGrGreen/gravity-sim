@@ -13,8 +13,11 @@ use std::{collections::HashMap, time::Instant};
 
 mod scene;
 mod spline;
+mod assetmanager;
 mod rendering;
 use rendering::{render::{Renderer, Vertex, VertexSimple}, render_camera::RenderCamera, text::{format_to_exact_length, RenderedText, TextVbo}};
+
+use crate::assetmanager::RenderManager;
 
 
 mod util;
@@ -108,7 +111,8 @@ fn main() {
     //The different "renderers"
     // Is basically a combination of VBO, IndexBuffer and Program
     // Is a handy way to have everything in one place..
-    let low_res_renderer = rendering::render::Renderer::new(&screen_quad,&quad_indicies, Some(glium::index::PrimitiveType::TrianglesList), &low_res_vert, &low_res_frag, None, None, None, &display, None, None).unwrap();
+    let mut main_resources = RenderManager::new();
+    let low_res_renderer = rendering::render::Renderer::new(&mut main_resources, &screen_quad,&quad_indicies, Some(glium::index::PrimitiveType::TrianglesList), &low_res_vert, &low_res_frag, None, None, None, &display, None, None).unwrap();
 
     camera.perspective = rendering::render::calculate_perspective(window.inner_size().into());
     
@@ -207,8 +211,11 @@ fn main() {
                 return_scene.draw(&display);
                 //println!("Draw scene: {:.2?}", drawTimer.elapsed());
                 drawTimer = Instant::now();
-                target.clear_color_and_depth((0.3, 0.6, 0.1, 1.0), 1.0);
-                target.draw(&low_res_renderer.vbo, &low_res_renderer.indicies,&low_res_renderer.program, &uniform! {tex: return_scene.scene_tex.sampled().magnify_filter(MagnifySamplerFilter::Nearest)}, &low_res_renderer.draw_params).unwrap();
+                if let Some((mesh, material)) = main_resources.meshes.get(&low_res_renderer.mesh).zip(main_resources.materials.get(&low_res_renderer.material)) {
+target.clear_color_and_depth((0.3, 0.6, 0.1, 1.0), 1.0);
+                    target.draw(&mesh.vertices, &mesh.indices, &material.program, &uniform! {tex: return_scene.scene_tex.sampled().magnify_filter(MagnifySamplerFilter::Nearest)}, &material.draw_params).unwrap();
+                }
+
                 //println!("Draw to screen: {:.2?}", drawTimer.elapsed());
                 target.finish().unwrap();
                 //println!("Finish: {:.2?}", drawTimer.elapsed());

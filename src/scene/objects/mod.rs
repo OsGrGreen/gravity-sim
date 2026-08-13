@@ -8,7 +8,7 @@ use glium::{framebuffer::SimpleFrameBuffer, Texture2d};
 use renderable::RenderObject;
 use physics::PhysicsObject;
 
-use crate::{rendering::{render::Renderer, render_camera::RenderCamera}, scene::objects::{colliders::Collider, transform::Transform}};
+use crate::{assetmanager::RenderManager, rendering::{RenderContext, render::Renderer, render_camera::RenderCamera}, scene::objects::{colliders::Collider, renderable::Renderable, transform::Transform}};
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub struct ObjectId {
@@ -24,13 +24,13 @@ impl ObjectId{
 pub struct WorldObject{
     pub id: ObjectId,
     pub transform: Transform,
-    pub render: RenderObject,
+    pub render: Option<Box<dyn Renderable>>,
     pub physics: PhysicsObject,
     pub collider: Option<Collider>,
 }
 
 impl WorldObject{
-    pub fn new(index: usize, transform: Transform, render: RenderObject, physics: PhysicsObject, collider: Option<Collider>) -> WorldObject{
+    pub fn new(index: usize, transform: Transform, render: Option<Box<dyn Renderable>>, physics: PhysicsObject, collider: Option<Collider>) -> WorldObject{
         let mut wo = WorldObject{
             id: ObjectId { index },
             render,
@@ -41,12 +41,12 @@ impl WorldObject{
         return wo;
     } 
 
-   pub fn draw(&mut self, fbo: &mut SimpleFrameBuffer<'_>, camera: &RenderCamera, renderer: &Renderer, texture: &mut Option<&Texture2d>, time: f32){
-    if texture.is_none(){
-        self.render.draw(self.transform, fbo, camera, renderer, time);
-    }else{
-        self.render.draw_with_texture(self.transform, fbo, camera, renderer, texture.unwrap(), time);
-    }
+   pub fn draw(&mut self, context: &mut RenderContext, asset_manager: &RenderManager){
+        if let Some(renderable) = &self.render {
+            renderable.render(&self.transform, context, asset_manager);
+        }
+        //self.render.draw(self.transform, fbo, camera, renderer, time);
+        //self.render.draw_with_texture(self.transform, fbo, camera, renderer, texture.unwrap(), time);
    }
 
    pub fn collides(&self, obj2: &WorldObject) -> bool{

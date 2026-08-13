@@ -3,7 +3,7 @@ use std::io::stdout;
 use glam::{Mat4, Quat, Vec3};
 use glium::{glutin::{api::wgl::display, surface::WindowSurface}, index::PrimitiveType, Display, IndexBuffer, VertexBuffer};
 
-use crate::{rendering::{self, render::{Renderer, VertexSimple}}, util};
+use crate::{assetmanager::RenderManager, rendering::{self, render::{Renderer, VertexSimple}}, util};
 
 pub struct BezierCurve{
     control_points: [Vec3; 4],
@@ -149,7 +149,7 @@ impl Spline{
         return self.curves.len();
     }
 
-    pub fn spline_renderer(&self, display: &Display<WindowSurface>) -> (VertexBuffer<VertexSimple>, IndexBuffer<u16>, Renderer){
+    pub fn spline_renderer(&self, display: &Display<WindowSurface>, render_manager: &mut RenderManager) -> (VertexBuffer<VertexSimple>, IndexBuffer<u16>, Renderer){
         let surface_vert_shader  = util::read_shader(include_bytes!(r"../../shaders/spline/bezier_curve/vert.glsl"));
         let surface_frag_shader  = util::read_shader(include_bytes!(r"../../shaders/spline/bezier_curve/frag.glsl"));
         let surface_tess_ctrl_shader  = util::read_shader(include_bytes!(r"../../shaders/spline/bezier_curve/tess_ctrl.glsl"));
@@ -172,7 +172,7 @@ impl Spline{
         let mut inds = glium::IndexBuffer::new(display,PrimitiveType::Patches {vertices_per_patch: 4,},
             &self.get_indicies()).unwrap();
         //println!("{:?}", &self.get_indicies());
-        let surface_renderer = rendering::render::Renderer::new(&vec![], &vec![], Some(PrimitiveType::Patches {vertices_per_patch: 4,}), &surface_vert_shader, &surface_frag_shader, /*Some(geo_shader)*/ None, Some(&surface_tess_ctrl_shader), Some(&surface_tess_eval_shader), &display, Some(line_params), None).unwrap();
+        let surface_renderer = rendering::render::Renderer::new(render_manager, &vec![], &vec![], Some(PrimitiveType::Patches {vertices_per_patch: 4,}), &surface_vert_shader, &surface_frag_shader, /*Some(geo_shader)*/ None, Some(&surface_tess_ctrl_shader), Some(&surface_tess_eval_shader), &display, Some(line_params), None).unwrap();
 
         return (vbo, inds, surface_renderer);
     }
