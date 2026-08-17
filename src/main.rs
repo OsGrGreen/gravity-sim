@@ -212,7 +212,7 @@ fn main() {
                 //println!("Draw scene: {:.2?}", drawTimer.elapsed());
                 drawTimer = Instant::now();
                 if let Some((mesh, material)) = main_resources.meshes.get(&low_res_renderer.mesh).zip(main_resources.materials.get(&low_res_renderer.material)) {
-target.clear_color_and_depth((0.3, 0.6, 0.1, 1.0), 1.0);
+                    target.clear_color_and_depth((0.3, 0.6, 0.1, 1.0), 1.0);
                     target.draw(&mesh.vertices, &mesh.indices, &material.program, &uniform! {tex: return_scene.scene_tex.sampled().magnify_filter(MagnifySamplerFilter::Nearest)}, &material.draw_params).unwrap();
                 }
 

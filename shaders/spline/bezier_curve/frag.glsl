@@ -10,7 +10,7 @@ uniform int color_steps = 5;
 uniform vec3 object_color;
 
 uniform float u_dashSize = 0.05;
-uniform float u_gapSize = 0.05;
+uniform float u_gapSize = 0.02;
 
 out vec4 color;
 

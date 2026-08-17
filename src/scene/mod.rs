@@ -2,29 +2,30 @@ use core::f32;
 use std::{collections::HashMap, hash::Hash, println};
 
 use glam::{Mat4, Vec3, Vec4, Vec4Swizzles};
-use glium::{framebuffer::SimpleFrameBuffer, glutin::surface::WindowSurface, texture::DepthTexture2d, Display, Surface, Texture2d};
+use glium::{Display, Surface, Texture2d, framebuffer::SimpleFrameBuffer, glutin::surface::WindowSurface, texture::{DepthTexture2d, TextureHandle}};
 use light::Light;
 use objects::{physics::{PhysicsObject}, renderable::RenderObject, WorldObject};
 use rand::Rng;
 use winit::{event::MouseButton, keyboard, window::Window};
 
-use crate::{assetmanager::RenderManager, rendering::{RenderContext, render::{self, Renderer}, render_camera::RenderCamera}, scene::objects::{ObjectId, SceneObject, SceneObjectBehaviour, physics::{bodies::{RigidBody, StaticBody}, controllers::{self, Controller, gravity_controller::Gravity, movement_controller::{Movement, PlayerMover}, path_controller::{self, Path}}}, renderable::{MeshRenderer, Renderable}, transform::Transform}, spline::Spline, util::{create_fbo, create_render_textures, input_handler::{self, InputHandler}, load_texture}};
+use crate::{assetmanager::{RenderManager, handles}, rendering::{RenderContext, render::{self, Renderer}, render_camera::RenderCamera}, scene::{objects::{ObjectId, SceneObject, SceneObjectBehaviour, physics::{bodies::{RigidBody, StaticBody}, controllers::{self, Controller, gravity_controller::Gravity, movement_controller::{Movement, QuatMover}, path_controller::{self, Path}}}, renderable::{MeshRenderer, Renderable}, transform::Transform}, renders::TemporaryRender}, spline::Spline, util::{create_fbo, create_render_textures, input_handler::{self, InputHandler}, load_texture}};
 
 pub mod bezier_surface;
 pub mod objects;
 pub mod light;
 pub mod slingshot_scene;
+pub mod renders;
 
 pub struct SceneContent {
     time: f32,
     world_objects: Vec<SceneObject>,
     lights: Vec<Light>,
     pub camera: RenderCamera,
+    render_objects: Vec<TemporaryRender>
 }
 pub struct Scene{
     content: SceneContent,
     render_manager: RenderManager,
-    textures: HashMap<ObjectId,Texture2d>,
     controllers: Vec<Box<dyn Controller>>,
     pub scene_tex: Texture2d,
     scene_depth: DepthTexture2d,
@@ -35,7 +36,7 @@ impl Scene{
         let (world_texture, depth_world_texture) = create_render_textures(&display,size.0, size.1);
         let gravity = Gravity::new(6.67e-5);
         let render_manager = RenderManager::new();
-        Scene { content: SceneContent { time: 0.0, world_objects: Vec::new(), lights: lights.unwrap_or(Vec::new()), camera}, render_manager, textures: HashMap::new(), controllers: vec![Box::new(gravity)], scene_tex: world_texture, scene_depth: depth_world_texture}
+        Scene { content: SceneContent { time: 0.0, world_objects: Vec::new(), lights: lights.unwrap_or(Vec::new()), camera, render_objects: Vec::new()}, render_manager, controllers: vec![Box::new(gravity)], scene_tex: world_texture, scene_depth: depth_world_texture}
     }
 
     pub fn draw(&mut self, display: &Display<WindowSurface>){
@@ -50,6 +51,15 @@ impl Scene{
         for object in &mut self.content.world_objects{
             object.draw(&mut context, &mut self.render_manager);
         }
+
+        self.content.render_objects.retain(|render| {
+            let delete = {
+                render.draw(&mut context, &mut self.render_manager);
+                render.reset
+            };
+            !delete
+        });
+
     }
 
     pub fn add_generic_renderer(&mut self, name: &str, display: &Display<WindowSurface>,vertex_data: &[u8], fragment_data: &[u8], obj_data: &[u8]){
@@ -81,15 +91,22 @@ impl Scene{
         return self.content.world_objects.len() - 1;
     }
 
-    pub fn add_texture(&mut self, object_id: &ObjectId, display: &Display<WindowSurface>, tex_data: &[u8]){
-        self.textures.insert(*object_id, load_texture(display, tex_data));
+    pub fn add_texture(&mut self, display: &Display<WindowSurface>, tex_data: &[u8]) -> handles::TextureHandle{
+        self.render_manager.new_texture(load_texture(display, tex_data))
     }
 
     pub fn update_camera(&mut self, dt: f32, input_handler: &InputHandler){
         //println!("mouse pos: {}", input_handler.pos());
         if self.content.camera.is_following() {
-            println!("Following {} at {}", self.content.camera.get_following().index, self.content.world_objects[self.content.camera.get_following().index].transform().position);
-            self.content.camera.set_pos(self.content.world_objects[self.content.camera.get_following().index].transform().position);
+            //println!("Following {} at {}", self.content.camera.get_following().index, self.content.world_objects[self.content.camera.get_following().index].transform().position);
+            let old_target = self.content.camera.target();
+            let old_pos = self.content.camera.get_pos();
+            let change = self.content.camera.get_pos() - old_target;
+            let new_pos = self.content.world_objects[self.content.camera.get_following().index].transform().position;
+            if new_pos != old_pos {
+                self.content.camera.set_pos(self.content.world_objects[self.content.camera.get_following().index].transform().position);
+                self.content.camera.change_target(self.content.camera.get_pos() - change);
+            }
         } else {
             if input_handler.is_mouse_pressed(MouseButton::Left){
                 let mut yaw = 0.0;
@@ -148,7 +165,7 @@ impl Scene{
          let mut planet1 = WorldObject::new(1, Transform::new(), Some(Box::new(MeshRenderer::new("light".to_string()))), PhysicsObject::RigidBody(RigidBody::new(2.0)), None);
         planet1.data.transform.translate(Vec3::new(0.0, 0.0, 0.0));
 
-        let mut player_movement: Movement<PlayerMover> = Movement::new(PlayerMover::new());
+        let mut player_movement: Movement<QuatMover> = Movement::new(QuatMover::new());
         player_movement.add_single(&player);
         
         let mut skybox = WorldObject::new(2, Transform::new(), Some(Box::new(MeshRenderer::new("skybox".to_string()))), PhysicsObject::StaticBody(StaticBody::new(0.0)), None);
@@ -161,11 +178,11 @@ impl Scene{
         let (world_texture, depth_world_texture) = create_render_textures(&display,size.0, size.1);
 
 
-        let mut return_scene = Scene { content: SceneContent{ time: 0.0, world_objects: things, camera: RenderCamera::new(Vec3::new(0.0, 0.0, 15.0), Vec3::new(0.0, 0.0, 0.0), Vec3::new(0.0, 1.0, 0.0), Vec3::new(0.0, 0.0, -1.0), window.inner_size().into()), lights: Vec::new()}, render_manager, controllers: vec![Box::new(player_movement)],  textures: HashMap::new(), scene_tex: world_texture, scene_depth: depth_world_texture};
+        let mut return_scene = Scene { content: SceneContent{ time: 0.0, world_objects: things, camera: RenderCamera::new(Vec3::new(0.0, 0.0, 15.0), Vec3::new(0.0, 0.0, 0.0), Vec3::new(0.0, 1.0, 0.0), Vec3::new(0.0, 0.0, -1.0), window.inner_size().into()), lights: Vec::new(), render_objects: Vec::new()}, render_manager, controllers: vec![Box::new(player_movement)], scene_tex: world_texture, scene_depth: depth_world_texture};
         
-        return_scene.add_texture(&ObjectId::new(0), display, include_bytes!(r"../../textures/icon.png"));
-        return_scene.add_texture(&ObjectId::new(1), display, include_bytes!(r"../../textures/planet.png"));
-        return_scene.add_texture(&ObjectId::new(2), display, include_bytes!(r"../../textures/skybox.png"));
+        //return_scene.add_texture(&ObjectId::new(0), display, include_bytes!(r"../../textures/icon.png"));
+        //return_scene.add_texture(&ObjectId::new(1), display, include_bytes!(r"../../textures/planet.png"));
+        //return_scene.add_texture(&ObjectId::new(2), display, include_bytes!(r"../../textures/skybox.png"));
         return_scene.content.camera.set_following(ObjectId { index: 0 });
         return return_scene;
     }
@@ -235,22 +252,26 @@ impl Scene{
         let (world_texture, depth_world_texture) = create_render_textures(&display,size.0, size.1);
 
 
-        let mut return_scene = Scene { content: SceneContent { time: 0.0, world_objects: solar_system, camera: RenderCamera::new(Vec3::new(0.0, 0.0, 15.0), Vec3::new(0.0, 0.0, 0.0), Vec3::new(0.0, 1.0, 0.0), Vec3::new(0.0, 0.0, -1.0), window.inner_size().into()),  lights: Vec::new()}, render_manager,  controllers: vec![Box::new(gravity), Box::new(path_controller)], textures: HashMap::new(), scene_tex: world_texture, scene_depth: depth_world_texture};
+        let mut return_scene = Scene { content: SceneContent { time: 0.0, world_objects: solar_system, camera: RenderCamera::new(Vec3::new(0.0, 0.0, 15.0), Vec3::new(0.0, 0.0, 0.0), Vec3::new(0.0, 1.0, 0.0), Vec3::new(0.0, 0.0, -1.0), window.inner_size().into()),  lights: Vec::new(), render_objects: Vec::new()}, render_manager,  controllers: vec![Box::new(gravity), Box::new(path_controller)], scene_tex: world_texture, scene_depth: depth_world_texture};
         
-        return_scene.add_texture(&ObjectId::new(0), display, include_bytes!(r"../../textures/sun.png"));
-        return_scene.add_texture(&ObjectId::new(1), display, include_bytes!(r"../../textures/planet.png"));
-        return_scene.add_texture(&ObjectId::new(4), display, include_bytes!(r"../../textures/skybox.png"));
+        //return_scene.add_texture(&ObjectId::new(0), display, include_bytes!(r"../../textures/sun.png"));
+        //return_scene.add_texture(&ObjectId::new(1), display, include_bytes!(r"../../textures/planet.png"));
+        //return_scene.add_texture(&ObjectId::new(4), display, include_bytes!(r"../../textures/skybox.png"));
         
         return return_scene;
     }
 
-    pub fn objects(&mut self) -> &mut Vec<SceneObject> {
-        &mut self.content.world_objects
+    pub fn objects(&mut self) -> &Vec<SceneObject> {
+        &self.content.world_objects
     }
 }
 
 impl SceneContent{
     pub fn objects(&mut self) -> &mut Vec<SceneObject> {
         &mut self.world_objects
+    }
+
+    pub fn read_objects(&self) -> &Vec<SceneObject> {
+        &self.world_objects
     }
 }

@@ -22,7 +22,7 @@ impl Controller for MouseDragController {
         let camera_mat = &scene.camera.getMatrix();
         let camera_view = Mat4::from_cols_array_2d(camera_mat);
         let camera_projection = scene.camera.perspective;
-        let mut objects = scene.objects();
+        let objects = scene.objects();
 
         let (ray_origin, ray_direction) =
             mouse_ray(input.pos(), camera_projection, camera_view);
@@ -36,7 +36,6 @@ impl Controller for MouseDragController {
                 Vec3::ZERO,
                 Vec3::Z,
             ){
-                println!("Intersection is: {}", intersection);
                 object.data_mut().transform.set_position(intersection);
             }
         };

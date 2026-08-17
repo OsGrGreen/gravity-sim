@@ -10,6 +10,8 @@ pub mod mouse_movement_controller;
 
 pub mod line_controller;
 
+pub mod prediction_controller;
+
 pub trait Controller {
     fn update(&mut self, scene: &mut SceneContent, input: &InputHandler);
     fn add(&mut self, objects: Vec<&WorldObject>);

@@ -41,14 +41,49 @@ impl<T: MovementType>  Controller for Movement<T>{
     }
 }
 
-pub struct PlayerMover{
+pub struct SimpleMover {
+    speed: f32,
+}
+
+impl SimpleMover {
+    pub fn new(speed: f32) -> SimpleMover {
+        SimpleMover {speed} 
+    }
+
+    fn move_world(&mut self, world_object: &mut WorldObject, input: &InputHandler) {
+
+        let delta_y = input.get_movement().y; 
+        let delta_x = input.get_movement().x;
+        let delta_z = if input.is_mouse_pressed(winit::event::MouseButton::Left) {1.0} else if input.is_mouse_pressed(winit::event::MouseButton::Right) {-1.0 } else {0.0};
+
+        let prev_pos = world_object.data.transform.position;
+        let new_pos = prev_pos + Vec3::new(delta_x, delta_y, delta_z) * self.speed;
+
+        println!("Previous posistion was: {:?}, with input ({}, {}), new pos is: {:?}", prev_pos, delta_x, delta_y, new_pos);
+        println!("World object transform is: {:?}\n\n", world_object.data.transform);
+        world_object.data.transform.set_position(new_pos);
+    }
+
+}
+
+
+impl MovementType for SimpleMover {
+    fn change_movement(&mut self, world_object: &mut SceneObject, input: &InputHandler) {
+        match world_object {
+            SceneObject::World(world_object) => self.move_world(world_object, input),
+            _ => (),
+        }
+    }
+}
+
+pub struct QuatMover{
     thrust: f32,
     orientation: Quat,
 }
 
-impl PlayerMover{
-    pub fn new() -> PlayerMover {
-        PlayerMover {thrust: 0.0, orientation:Quat::IDENTITY} 
+impl QuatMover{
+    pub fn new() -> QuatMover {
+        QuatMover {thrust: 0.0, orientation:Quat::IDENTITY} 
     }
 
     fn move_world(&mut self, world_object: &mut WorldObject, input: &InputHandler) {
@@ -75,11 +110,11 @@ impl PlayerMover{
 
         // Bound to max
 
-        world_object.physics.set_force(force);
+        world_object.physics.add_force(force);
     }
 }
 
-impl MovementType for PlayerMover{
+impl MovementType for QuatMover {
     fn change_movement(&mut self, world_object: &mut SceneObject, input: &InputHandler) {
         match world_object {
             SceneObject::World(world_object) => self.move_world(world_object, input),

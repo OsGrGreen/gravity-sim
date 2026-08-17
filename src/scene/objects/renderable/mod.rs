@@ -17,7 +17,9 @@ pub trait Renderable {
     );
 
     fn as_any(&mut self) -> &mut dyn Any;
-}
+
+    fn id(&self) -> String;
+} 
 
 //I should probably make the renderobjects save the VBO and indicies and not the renderer...
 #[derive(Debug)]
@@ -25,6 +27,7 @@ pub struct RenderObject<>{
     pub render_id: Option<String>,
     instanced_vbo: Option<VertexBuffer<VertexSimple>>
 }
+
 
 pub struct MeshRenderer {
     pub render_id: String,
@@ -66,7 +69,12 @@ impl Renderable for MeshRenderer {
     fn as_any(&mut self) -> &mut dyn Any {
         self
     }
+
+    fn id(&self) -> String {
+        self.render_id.clone()
+    }
 }
+
 
 pub struct SplineRenderer {
     pub render_id: String,
@@ -104,13 +112,17 @@ impl Renderable for SplineRenderer{
             if let Some(material) = possible_material {
                 let fbo = &mut context.framebuffer;
                 let camera = context.camera;
-                fbo.draw(&self.vertices, &self.indices, &material.program, &uniform! {u_screenSize: [640, 360], u_thickness: 50.0 as f32, steps: 48.0 as f32, model: Mat4::IDENTITY.to_cols_array_2d(), projection: camera.perspective.to_cols_array_2d(), view:camera.getMatrix()}, &material.draw_params).unwrap();
+                fbo.draw(&self.vertices, &self.indices, &material.program, &uniform! {u_screenSize: [640, 360], u_thickness: 50.0 as f32, steps: 48.0 as f32, model: transform.model_matrix().to_cols_array_2d(), projection: camera.perspective.to_cols_array_2d(), view:camera.getMatrix()}, &material.draw_params).unwrap();
             }
         }
     }
 
     fn as_any(&mut self) -> &mut dyn Any {
         self
+    }
+
+    fn id(&self) -> String {
+        self.render_id.clone()
     }
 }
 

@@ -49,6 +49,14 @@ impl SceneObject {
             SceneObject::Spline(o) => o.draw(context, asset_manager),
         }
     }
+
+    pub fn distance(&self, other: &SceneObject) -> (Vec3,f32){
+        (other.transform().position-self.transform().position,self.transform().position.distance(other.transform().position))
+    }
+
+    pub fn distance_point(&self, other: Vec3) -> (Vec3,f32){
+        (other-self.transform().position,self.transform().position.distance(other))
+    }
 }
 
 pub trait SceneObjectBehaviour {
@@ -132,7 +140,6 @@ impl SplineObject {
                 .as_any()
                 .downcast_mut::<SplineRenderer>()
                 .expect("Expected SplineRenderer");
-            println!("Spline is: {:?}", self.spline);
             spline_renderable.update(&self.spline);
             renderable.render(&self.data.transform, context, asset_manager);
         }
@@ -180,6 +187,10 @@ impl WorldObject{
    pub fn distance(&self, obj: &WorldObject) -> (Vec3,f32){
         (obj.data.transform.position-self.data.transform.position,self.data.transform.position.distance(obj.data.transform.position))
    }
+
+    pub fn distance_point(&self, other: Vec3) -> (Vec3,f32){
+        (other-self.data.transform.position,self.data.transform.position.distance(other))
+    }
 
 }
 

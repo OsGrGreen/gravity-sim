@@ -52,6 +52,10 @@ impl RenderCamera{
         self.following.is_some()
     }
 
+    pub fn target(&self) -> Vec3 {
+        self.target
+    }
+
     pub fn update(&mut self, yaw_updated: f32, pitch_updated: f32){
         //println!("pos before  {}", self.pos);
        // println!("Target is {}", self.target);
@@ -100,7 +104,6 @@ impl RenderCamera{
 
     pub fn getMatrix(&self) -> [[f32; 4]; 4] {
         let pos = self.pos;
-        println!("Matrix posistion is: {}", pos);
         let forward = (self.target - pos).normalize();
 
         // Derive right and up from orientation

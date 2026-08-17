@@ -14,13 +14,14 @@ pub mod controllers;
     fn mass(&self) -> f32;
     fn set_velocity(&mut self, vel: Vec3);
 }*/
-
+#[derive(Debug, Clone)]
 pub enum PhysicsObject {
     RigidBody(RigidBody),
     StaticBody(StaticBody),
     Nothing()
     // KinematicBody(KinematicBody),
 }
+
 
 impl PhysicsObject {
 
@@ -30,6 +31,18 @@ impl PhysicsObject {
 
     pub fn static_body(mass: f32) -> Self {
         PhysicsObject::StaticBody(StaticBody::new(mass))
+    }
+
+    pub fn copy_state(&self) -> Self {
+        match self {
+            PhysicsObject::RigidBody(body) => {
+                PhysicsObject::RigidBody(body.clone())
+            }
+            PhysicsObject::StaticBody(body) => {
+                PhysicsObject::StaticBody(body.clone())
+            }
+            PhysicsObject::Nothing() => PhysicsObject::Nothing(),
+        }
     }
 
 
@@ -53,10 +66,50 @@ impl PhysicsObject {
         }
     }
 
+    pub fn activate(&mut self) {
+        match self {
+            PhysicsObject::RigidBody(body) => {
+                body.activated = true;
+            }
+            PhysicsObject::StaticBody(_) => (),
+            PhysicsObject::Nothing() => (),
+        }
+    }
+
+    pub fn disable(&mut self) {
+        match self {
+            PhysicsObject::RigidBody(body) => {
+                body.activated = false;
+            }
+            PhysicsObject::StaticBody(_) => (),
+            PhysicsObject::Nothing() => (),
+        }
+    }
+
     pub fn velocity(&self) -> Vec3 {
         match self {
             PhysicsObject::RigidBody(body) => {
                 body.velocity
+            }
+            PhysicsObject::StaticBody(_) => Vec3::ZERO,
+            PhysicsObject::Nothing() => Vec3::ZERO,
+        }
+    }
+
+    pub fn acceleration(&self) -> Vec3 {
+        match self {
+            PhysicsObject::RigidBody(body) => {
+                body.acceleration
+            }
+            PhysicsObject::StaticBody(_) => Vec3::ZERO,
+            PhysicsObject::Nothing() => Vec3::ZERO,
+        }
+    }
+
+    pub fn force(&self) -> Vec3 {
+        match self {
+            PhysicsObject::RigidBody(body) => {
+                body.force
             }
             PhysicsObject::StaticBody(_) => Vec3::ZERO,
             PhysicsObject::Nothing() => Vec3::ZERO,
