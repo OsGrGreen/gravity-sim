@@ -1,4 +1,4 @@
-#version 450 core
+#version 410 core
 
 in vec3 fragment_Normal;
 in vec4 fragment_Position;

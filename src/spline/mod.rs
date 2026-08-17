@@ -1,7 +1,7 @@
 use std::io::stdout;
 
 use glam::{Mat4, Quat, Vec3};
-use glium::{glutin::{api::wgl::display, surface::WindowSurface}, index::PrimitiveType, Display, IndexBuffer, VertexBuffer};
+use glium::{glutin::{surface::WindowSurface}, index::PrimitiveType, Display, IndexBuffer, VertexBuffer};
 
 use crate::{assetmanager::RenderManager, rendering::{self, render::{Renderer, VertexSimple}}, util};
 
