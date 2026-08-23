@@ -9,7 +9,7 @@ pub struct InputHandler{
     pressed_mouse_keys: HashSet<MouseButton>,
     mouse_pos: Vec2,
     mouse_delta: Vec2,
-    size: PhysicalSize<u32>
+    size: PhysicalSize<u32>,
 }
 
 impl InputHandler{
@@ -30,6 +30,12 @@ impl InputHandler{
         }else{
             self.pressed_mouse_keys.remove(&button);
         }
+    }
+
+    pub fn update_mouse_delta(&mut self, delta: (f64, f64)) {
+        let md = Vec2::new(delta.0 as f32, delta.1 as f32);
+        self.mouse_delta += md;
+        self.mouse_pos = (self.mouse_pos + md).clamp(Vec2::ZERO, Vec2::new(self.size.width as f32, self.size.height as f32));
     }
 
     pub fn update_mouse(&mut self, new_pos: PhysicalPosition<f64>, size: &PhysicalSize<u32>){

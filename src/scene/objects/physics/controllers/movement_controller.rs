@@ -111,7 +111,7 @@ impl QuatMover{
                 let new_thrust = input.get_movement().y; 
                 let mouse = -input.delta();
                 let pitch_delta = mouse.y;
-                let yaw_delta = mouse.x;
+                let yaw_delta = -mouse.x;
                 let side_thrust =  input.get_movement().x;
 
                 if input.is_pressed(winit::keyboard::KeyCode::KeyQ) {
@@ -129,7 +129,7 @@ impl QuatMover{
                     _ => unreachable!(),
                 };*/
 
-                let (pitch, yaw, roll) = (pitch_delta*2.0, yaw_delta * 2.0, 0.0);
+                let (pitch, yaw, roll) = (pitch_delta*0.001, yaw_delta *0.001, 0.0);
 
                 println!(
                     "Thrust: {}, Pitch: {}, Yaw: {}, Roll: {}",

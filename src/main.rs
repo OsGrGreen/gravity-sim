@@ -129,6 +129,10 @@ fn main() {
     let smoothing = 0.6;  //For fps
     let mut frames:f32 = 0.0;
 
+    window.set_cursor_visible(false);
+    window.set_cursor_grab(winit::window::CursorGrabMode::Locked)
+        .or_else(|_| window.set_cursor_grab(winit::window::CursorGrabMode::Confined))
+        .unwrap();
 
     //Scene::init_gravity_scene(&window, &display, (window.inner_size().width/4, window.inner_size().height/4));
     let mut return_scene = Scene::init_slingshot_scene(&window, &display, (640, 360));
@@ -143,7 +147,7 @@ fn main() {
             },
             winit::event::WindowEvent::CursorMoved { device_id: _, position } => {
                 ////println!("Moved mouse!");
-                input_handler.update_mouse(position, &window.inner_size());
+                //input_handler.update_mouse(position, &window.inner_size());
             }
             winit::event::WindowEvent::MouseWheel { device_id: _, delta, phase } =>{
                     match delta {
@@ -155,6 +159,7 @@ fn main() {
             winit::event::WindowEvent::MouseInput { device_id, state, button } =>{
                 input_handler.update_mouse_click(device_id, state, button);
             }
+            
             
 
             // TODO
@@ -225,6 +230,9 @@ fn main() {
                 //println!();
             },
             _ => (),
+            },
+            winit::event::Event::DeviceEvent { event: winit::event::DeviceEvent::MouseMotion { delta }, .. } => {
+                input_handler.update_mouse_delta(delta);
             },
             winit::event::Event::AboutToWait => {
                 window.request_redraw();
