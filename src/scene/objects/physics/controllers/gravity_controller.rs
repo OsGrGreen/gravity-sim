@@ -31,6 +31,7 @@ fn update(&mut self, scene: &mut SceneContent, input: &InputHandler) {
         }).collect();
 
         if !self.activated {
+            println!("Big slay");
             let camera_mat = &scene.camera.getMatrix();
             let camera_view = Mat4::from_cols_array_2d(camera_mat);
             let camera_projection = scene.camera.perspective;
@@ -76,15 +77,17 @@ fn update(&mut self, scene: &mut SceneContent, input: &InputHandler) {
                 let (obj1, after) = after.split_first_mut().unwrap(); // Get obj1 from after
                 if self.ids.contains(&obj1.data.id){
                     for obj2 in before.iter().chain(after.iter()) {
-                        let (dir, distance) = obj1.distance(obj2);
-                        let force = self.G*(obj1.physics.mass()*obj2.physics.mass())/(distance*distance);
-                        println!("Force is : {:?} in direction: {:?}, distance: {:?}", force, dir, distance);
-                        obj1.physics.add_force(dir.normalize()*force);
-                        //println!("World object real state during simulation: ({:?}, {:?})", obj1.data.transform, obj1.physics);
-                        //Collision
-                        if obj1.collides(obj2){
-                            //println!("Collision between {:?} and {:?}", obj1,obj2);
-                        }
+                        if obj2.physics.mass() != 0.0 {
+                            let (dir, distance) = obj1.distance(obj2);
+                            let force = self.G*(obj1.physics.mass()*obj2.physics.mass())/(distance*distance);
+                            println!("Force is : {:?} in direction: {:?}, distance: {:?}, mass 1: {}, mass 2: {}", force, dir, distance, obj1.physics.mass(), obj2.physics.mass());
+                            obj1.physics.add_force(dir.normalize()*force);
+                            //println!("World object real state during simulation: ({:?}, {:?})", obj1.data.transform, obj1.physics);
+                            //Collision
+                            if obj1.collides(obj2){
+                                //println!("Collision between {:?} and {:?}", obj1,obj2);
+                            }
+                        } 
                     }
                 }
             }

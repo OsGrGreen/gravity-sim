@@ -1,3 +1,5 @@
+use std::println;
+
 use glam::Vec3;
 
 use crate::scene::objects::{physics::bodies::StaticBody, transform::Transform};
