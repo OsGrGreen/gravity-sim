@@ -1,4 +1,7 @@
 
+use core::f32;
+use std::println;
+
 use glam::{Mat4, Quat, Vec3, Vec4};
 
 use crate::{scene::{Scene, SceneContent, objects::{ObjectId, SceneObject, SceneObjectBehaviour, WorldObject, transform::Transform}, renders::TemporaryRender}, util::input_handler::InputHandler};
@@ -87,15 +90,11 @@ impl MovementType for SimpleMover {
 pub struct QuatMover{
     thrust: f32,
     orientation: Quat,
-    pitch: f32,
-    yaw: f32,
-    roll: f32,
-    current_dir: u8,
 }
 
 impl QuatMover{
     pub fn new() -> QuatMover {
-        QuatMover {thrust: 1.0, orientation:Quat::IDENTITY, pitch: 0.0, yaw: -3.15, roll: 0.0, current_dir: 0} 
+        QuatMover {thrust: 1.0, orientation:Quat::from_rotation_x(0.0)*Quat::from_rotation_y(0.0)*Quat::from_rotation_z(0.0)} 
     }
 
     fn move_world(&mut self, object_id: ObjectId, scene: &mut SceneContent, input: &InputHandler) {
@@ -106,78 +105,42 @@ impl QuatMover{
         match object {
             SceneObject::World(world_object) => {
 
-                println!("Moving world_object {:?}", object_id);
 
                 let new_thrust = input.get_movement().y; 
-                let mouse = -input.delta();
+                let mouse = input.delta();
                 let pitch_delta = mouse.y;
-                let yaw_delta = -mouse.x;
+                let yaw_delta = mouse.x;
                 let side_thrust =  input.get_movement().x;
+                let mut roll_delta = 0.0;
 
                 if input.is_pressed(winit::keyboard::KeyCode::KeyQ) {
-                    self.current_dir = (self.current_dir + 1) % 3;
+                    roll_delta += 1.0;
                 }
 
                 if input.is_pressed(winit::keyboard::KeyCode::KeyE) {
-                    self.current_dir = (self.current_dir + 2) % 3;
+                    roll_delta -= 1.0;
                 }
 
-                /*let (pitch, yaw, roll) = match self.current_dir {
-                    0 => (roll_delta, 0.0, 0.0),
-                    1 => (0.0, roll_delta, 0.0),
-                    2 => (0.0, 0.0, roll_delta),
-                    _ => unreachable!(),
-                };*/
 
-                let (pitch, yaw, roll) = (pitch_delta*0.001, yaw_delta *0.001, 0.0);
-
-                println!(
-                    "Thrust: {}, Pitch: {}, Yaw: {}, Roll: {}",
-                    new_thrust, pitch, yaw, roll
-                );
-
-                self.pitch = pitch;
-                self.yaw = yaw;
-                self.roll += roll;
-
-                /*self.orientation =
-                    Quat::from_rotation_x(self.pitch)
-                    * Quat::from_rotation_y(self.yaw)
-                    * Quat::from_rotation_z(self.roll);
-                    */
-
+                let (pitch, yaw, roll) = (pitch_delta*0.001, yaw_delta *0.001, roll_delta * 0.05);
 
                 let delta_rotation =
-                    Quat::from_rotation_x(pitch) * Quat::from_rotation_y(yaw) * Quat::from_rotation_z(0.0);
+                    Quat::from_rotation_x(pitch) * Quat::from_rotation_y(yaw) * Quat::from_rotation_z(roll);
 
                 self.orientation = (self.orientation * delta_rotation).normalize();
-
                 //self.orientation = self.orientation.normalize();
 
-                println!("{}, {}, {}", self.pitch, self.yaw, self.roll);
-                //println!("orientation is {:?}", self.orientation);
-                let forward = self.orientation * Vec3::NEG_Z;
+                let forward = self.orientation * Vec3::Z;
                 let up      = self.orientation * Vec3::Y;
-                let right   = -(self.orientation * Vec3::X);
+                let right   = self.orientation * Vec3::X;
 
-                println!("Forward is: {}, up is {}, right is {}", forward, up, right);
                 let mut force = forward * new_thrust*self.thrust + right*side_thrust*self.thrust/2.0;
                 //println!("Transform: {:?}, forward: {:?}", world_object.data.transform.position, forward);
-                
-                // Interpolate between forces
-                if let Some(renderable) = &world_object.data.render {
-                    let mut transform = Transform::new_from_pos(world_object.data.transform.position + forward);
-                    transform.scale(Vec3::new(0.1, 0.1, 0.1));
-                    let direction = TemporaryRender { transform, render_id: renderable.id(), reset: true };
-                    new_renders.push(direction);
-                }
 
-
-                // Bound to max
                 if input.is_pressed(winit::keyboard::KeyCode::Tab) {
                     force = -world_object.physics.velocity();
                 }else {
-                    world_object.data.transform.rotation = self.orientation * 0.5;
+                    world_object.data.transform.rotation = self.orientation;
                 }
                 world_object.physics.add_force(force);
             },

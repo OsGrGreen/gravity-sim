@@ -1,5 +1,6 @@
 
 use core::f32;
+use std::println;
 
 use glam::{Mat4, Quat, Vec3, Vec4, Vec4Swizzles};
 use winit::window::Window;
@@ -57,7 +58,7 @@ impl RenderCamera{
         self.target
     }
 
-    pub fn update_follow(&mut self,new_position: Vec3, object_rotation: Quat,) {
+    pub fn update_follow(&mut self, new_position: Vec3, object_rotation: Quat,) {
         // Position of the camera relative to the player/object.
         //self.orientation *= 
             //object_rotation;
@@ -123,14 +124,7 @@ impl RenderCamera{
 
 
     pub fn getMatrix(&self) -> [[f32; 4]; 4] {
-        let pos = self.pos;
-        let forward = (self.target - pos).normalize();
-
-        // Derive right and up from orientation
-        let right = (self.orientation * Vec3::X).normalize();
-        let up = right.cross(forward).normalize();
-
-        return Mat4::look_at_lh(pos, self.target, up).to_cols_array_2d();
+        return Mat4::look_at_rh(self.pos, self.target, self.up).to_cols_array_2d();
     }
 
     pub fn get_right(&self) -> Vec3{

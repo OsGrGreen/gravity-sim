@@ -40,6 +40,7 @@ impl Scene{
     }
 
     pub fn draw(&mut self, display: &Display<WindowSurface>){
+        println!("Matrix for camera is {}", self.content.camera.look_at());
         let mut fbo = create_fbo(&display, &self.scene_tex, &self.scene_depth);
         fbo.clear_color_and_depth((0.05, 0.05, 0.14, 1.0), 1.0);
         let mut context = RenderContext{
