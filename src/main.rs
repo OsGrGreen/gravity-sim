@@ -191,6 +191,7 @@ fn main() {
                     let physicsTimer = Instant::now();
                     return_scene.update_physics(dt, &input_handler);
                     return_scene.update_camera(dt, &input_handler);
+                    input_handler.end_frame();
                     ////println!("Physics: {:.2?}", physicsTimer.elapsed());
                     t += dt;
                     accumulator -= dt;

@@ -1,4 +1,4 @@
-use crate::{assetmanager::RenderManager, scene::{Scene, SceneContent, objects::{self, SceneObjectBehaviour, SplineObject, physics::{bodies::RigidBody, controllers::{gravity_controller::PlayerGravity, line_controller::LineController, mouse_movement_controller::MouseDragController, movement_controller::SimpleMover, prediction_controller::PredictionController}}, renderable::{MeshRenderer, SplineRenderer}, transform::Transform}}, util::ray_library::{mouse_ray, ndc_to_intersection, ray_plane_intersection}};
+use crate::{assetmanager::{CreatorManager, RenderManager}, scene::{Scene, SceneContent, objects::{self, SceneObjectBehaviour, SplineObject, object_creator::{centered_grid, create_generalized_grid, create_grid, paraboloid_grid}, physics::{bodies::RigidBody, controllers::{gravity_controller::PlayerGravity, line_controller::LineController, mouse_movement_controller::MouseDragController, movement_controller::SimpleMover, prediction_controller::PredictionController}}, renderable::{MeshRenderer, SplineRenderer}, transform::Transform}}, util::ray_library::{mouse_ray, ndc_to_intersection, ray_plane_intersection}};
 use core::f32;
 use std::{collections::HashMap, hash::Hash, println};
 
@@ -34,7 +34,7 @@ impl Scene{
         let mut player = WorldObject::new(0, Transform::new(), Some(Box::new(MeshRenderer::new("player".to_string()))), PhysicsObject::RigidBody(RigidBody::new(1.0)), None);
         player.data.transform.translate(Vec3::new(0.0, 0.0, 0.0));
         player.data.transform.scale(Vec3::new(0.4, 0.4, 0.4));
-        player.physics.disable();
+        //player.physics.disable();
         
 
         let mut planet1 = WorldObject::new(1,Transform::new(), Some(Box::new(MeshRenderer::new("planet".to_string()))), PhysicsObject::RigidBody(RigidBody::new(12.0)), None);
@@ -49,7 +49,7 @@ impl Scene{
         let mut camera = RenderCamera::new(Vec3::new(0.0, 0.0, 10.0), Vec3::new(0.0, 0.0, 0.0), Vec3::new(0.0, 1.0, 0.0), Vec3::new(0.0, 0.0, -1.0), window.inner_size().into());
 
         let camera_posistion = WorldObject::new(5, Transform::new_from_pos(Vec3::new(0.0, 0.0, 10.0)), None, PhysicsObject::Nothing(), None);
-        camera.set_following(camera_posistion.data.id);
+        camera.set_following(player.data.id);
 
         let base_spline = Spline::new([Vec3::ZERO, Vec3::ZERO, Vec3::ZERO, Vec3::ZERO]);
         let render = Box::new(SplineRenderer::new("spline".to_string(), &base_spline, &mut render_manager, display));
@@ -62,11 +62,14 @@ impl Scene{
         let mut gravity = PlayerGravity::new(1.0);
         gravity.add_single(&player);
 
-        let mut movement = Movement::new(SimpleMover::new(0.25));
-        movement.add_single(&camera_posistion);
+        let mut player_movement = Movement::new(QuatMover::new());
+        player_movement.add_single(&player);
 
-        let mut prediction = PredictionController::new(250, 0.2, Box::new(gravity.clone()));
-        prediction.add_single(&player);
+        let mut movement = Movement::new(SimpleMover::new(0.25));
+        //movement.add_single(&camera_posistion);
+
+        let mut prediction = PredictionController::new(250, 0.2, gravity.clone());
+        //prediction.add_single(&player);
         //let mut player_movement: Movement<PlayerMover> = Movement::new(PlayerMover::new());
         //player_movement.add_single(&player);
         let things: Vec<objects::SceneObject> = vec![SceneObject::World(player), SceneObject::World(planet1), SceneObject::World(worldmouse), SceneObject::Spline(spline), SceneObject::World(planet2), SceneObject::World(camera_posistion)];
@@ -75,8 +78,10 @@ impl Scene{
 
 
 
-        let mut return_scene= Scene { content: SceneContent { time: 0.0, world_objects: things, camera, lights: Vec::new(), render_objects: Vec::new()}, render_manager, controllers: vec![Box::new(mouse), Box::new(line), Box::new(gravity), Box::new(prediction), Box::new(movement)], scene_tex: world_texture, scene_depth: depth_world_texture};
-            
+        let mut return_scene= Scene { content: SceneContent { time: 0.0, world_objects: things, camera, lights: Vec::new(), render_objects: Vec::new()}, render_manager, controllers: vec![/*Box::new(mouse), Box::new(line), */Box::new(gravity), Box::new(prediction), Box::new(movement), Box::new(player_movement)], scene_tex: world_texture, scene_depth: depth_world_texture};
+        let mut creator = CreatorManager::new(&mut return_scene, display);
+        create_generalized_grid(Vec3::new(0.0, -5.0, 0.0), Vec3::new(0.0, 1.0, 0.0), 30, 30, 0.5, |ctx| paraboloid_grid(ctx), &mut creator);
+        //create_grid(Vec3::new(0.0, 0.0, -2.0), Vec3::new(0.0, 0.0, 1.0), 3, 2, 1.0, &mut creator);
         //return_scene.add_texture(&ObjectId::new(1), display, include_bytes!(r"../../textures/planet.png"));
         return return_scene;
     }

@@ -1,10 +1,29 @@
 use std::collections::HashMap;
 
-use glium::Texture2d;
+use glium::{Display, Texture2d, glutin::surface::WindowSurface};
 
-use crate::{assetmanager::handles::{MaterialHandle, MeshHandle, TextureHandle}, rendering::{Material, Mesh, render::Renderer}};
+use crate::{assetmanager::handles::{MaterialHandle, MeshHandle, TextureHandle}, rendering::{Material, Mesh, render::Renderer}, scene::{Scene, objects::WorldObject}};
 
 pub mod handles;
+
+pub struct CreatorManager<'a>{
+    pub display: &'a Display<WindowSurface>,
+    pub scene: &'a mut Scene,
+}
+
+impl <'a> CreatorManager <'a> {
+    pub fn next_id(&self) -> usize{
+        self.scene.num_objects()
+    }
+    
+    pub fn add_object(&mut self, obj: WorldObject) -> usize{
+        self.scene.add_object(obj)
+    }
+
+    pub fn new(scene: &'a mut Scene, display: &'a Display<WindowSurface>) -> Self {
+        CreatorManager { display, scene }
+    }
+}
 
 pub struct RenderManager {
     pub meshes: HashMap<MeshHandle, Mesh>,

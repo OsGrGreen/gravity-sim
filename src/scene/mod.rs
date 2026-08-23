@@ -25,7 +25,7 @@ pub struct SceneContent {
 }
 pub struct Scene{
     content: SceneContent,
-    render_manager: RenderManager,
+    pub render_manager: RenderManager,
     controllers: Vec<Box<dyn Controller>>,
     pub scene_tex: Texture2d,
     scene_depth: DepthTexture2d,
@@ -99,14 +99,10 @@ impl Scene{
         //println!("mouse pos: {}", input_handler.pos());
         if self.content.camera.is_following() {
             //println!("Following {} at {}", self.content.camera.get_following().index, self.content.world_objects[self.content.camera.get_following().index].transform().position);
-            let old_target = self.content.camera.target();
-            let old_pos = self.content.camera.get_pos();
-            let change = self.content.camera.get_pos() - old_target;
-            let new_pos = self.content.world_objects[self.content.camera.get_following().index].transform().position;
-            if new_pos != old_pos {
-                self.content.camera.set_pos(self.content.world_objects[self.content.camera.get_following().index].transform().position);
-                self.content.camera.change_target(self.content.camera.get_pos() - change);
-            }
+            let object = &self.content.world_objects[self.content.camera.get_following().index];
+            self.content.camera.update_follow(object.transform().position, object.transform().rotation);
+
+            
         } else {
             if input_handler.is_mouse_pressed(MouseButton::Left){
                 let mut yaw = 0.0;
@@ -263,6 +259,10 @@ impl Scene{
 
     pub fn objects(&mut self) -> &Vec<SceneObject> {
         &self.content.world_objects
+    }
+
+    pub fn num_objects(&self) -> usize {
+        self.content.world_objects.len()
     }
 }
 

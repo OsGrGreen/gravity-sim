@@ -6,7 +6,7 @@ use winit::window::Window; */
 
 
 use glam::Mat4;
-use glium::{glutin::surface::WindowSurface, program::TransformFeedbackMode, uniforms::{AsUniformValue, Uniforms, UniformsStorage}, Display, DrawParameters, Frame, Program, Surface, VertexBuffer};
+use glium::{Display, DrawParameters, Frame, PolygonMode, Program, Surface, VertexBuffer, glutin::surface::WindowSurface, program::TransformFeedbackMode, uniforms::{AsUniformValue, Uniforms, UniformsStorage}};
 
 use crate::{assetmanager::{RenderManager, handles::{MaterialHandle, MeshHandle}}, rendering::{Material, Mesh}, util::{read_model, read_shader}};
 
@@ -107,6 +107,8 @@ impl Renderer{
                         .. Default::default()
                     },
                     backface_culling: glium::draw_parameters::BackfaceCullingMode::CullCounterClockwise,
+                    polygon_mode: PolygonMode::Line,
+                    line_width: Some(500.0),
                     .. Default::default()
                 };
             let mesh = assets.new_mesh(Mesh::new(vbo, indicies));

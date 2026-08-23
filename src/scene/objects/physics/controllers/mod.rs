@@ -12,6 +12,8 @@ pub mod line_controller;
 
 pub mod prediction_controller;
 
+pub mod grid_controller;
+
 pub trait Controller {
     fn update(&mut self, scene: &mut SceneContent, input: &InputHandler);
     fn add(&mut self, objects: Vec<&WorldObject>);

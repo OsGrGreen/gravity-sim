@@ -8,15 +8,17 @@ pub struct PredictionState {
     pub physics: PhysicsObject,
 }
 
-pub struct PredictionController{
+pub struct PredictionController<T: Controller>{
     pub steps: usize,
     pub dt: f32,
-    pub controller: Box<dyn Controller>,
+    pub controller: T,
     ids: Vec<ObjectId>,
 }
 
-impl PredictionController {
-    pub fn new(steps: usize, dt: f32,controller: Box<dyn Controller>) -> PredictionController {
+impl<T> PredictionController<T> 
+where T: Controller
+{
+    pub fn new(steps: usize, dt: f32,controller: T) -> PredictionController<T> {
         PredictionController { steps, dt, controller, ids: Vec::new()}
     }
 
@@ -53,7 +55,9 @@ impl PredictionController {
     }
 }
 
-impl Controller for PredictionController{
+impl<T> Controller for PredictionController<T>
+where T: Controller
+{
     fn update(&mut self, scene: &mut crate::scene::SceneContent, _: &crate::util::input_handler::InputHandler) {
         let mut new_renders = Vec::new();
         let objects = scene.read_objects();

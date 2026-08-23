@@ -17,7 +17,7 @@ pub struct PlayerGravity{
 
 impl PlayerGravity{
     pub fn new(g_const: f32) -> PlayerGravity{
-        PlayerGravity { G: g_const , ids:Vec::new(), activated: false}
+        PlayerGravity { G: g_const , ids:Vec::new(), activated: true}
     }
 }
 
@@ -78,6 +78,7 @@ fn update(&mut self, scene: &mut SceneContent, input: &InputHandler) {
                     for obj2 in before.iter().chain(after.iter()) {
                         let (dir, distance) = obj1.distance(obj2);
                         let force = self.G*(obj1.physics.mass()*obj2.physics.mass())/(distance*distance);
+                        println!("Force is : {:?} in direction: {:?}, distance: {:?}", force, dir, distance);
                         obj1.physics.add_force(dir.normalize()*force);
                         //println!("World object real state during simulation: ({:?}, {:?})", obj1.data.transform, obj1.physics);
                         //Collision

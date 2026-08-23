@@ -2,6 +2,7 @@ pub mod physics;
 pub mod renderable;
 pub mod transform;
 pub mod colliders;
+pub mod object_creator;
 
 use glam::Vec3;
 use glium::{framebuffer::SimpleFrameBuffer, Texture2d};

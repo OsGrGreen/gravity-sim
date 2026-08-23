@@ -31,8 +31,9 @@ impl RigidBody {
 
     pub fn update_physics(&mut self, dt: f32, transform: &mut Transform,) {
         if self.activated {
+            println!("Force is: {:?}", self.force);
             let acceleration = self.force / self.mass;
-
+            
             self.velocity += acceleration * dt;
             transform.position += self.velocity * dt;
 

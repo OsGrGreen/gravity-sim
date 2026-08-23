@@ -20,7 +20,7 @@ impl InputHandler{
             pressed_mouse_keys: HashSet::new(),
             mouse_pos: Vec2::ZERO,
             mouse_delta: Vec2::ZERO,
-            size: PhysicalSize { width: 0, height: 0 }
+            size: PhysicalSize { width: 1, height: 1 }
         }
     }
 
@@ -35,8 +35,13 @@ impl InputHandler{
     pub fn update_mouse(&mut self, new_pos: PhysicalPosition<f64>, size: &PhysicalSize<u32>){
         self.size = *size;
         let pos = Self::convert_to_ndc(new_pos, size);
-        self.mouse_delta = self.mouse_pos-pos;
+        let delta = self.mouse_pos-pos;
+        self.mouse_delta += Vec2::new(delta.x, delta.y);
         self.mouse_pos = pos;
+    }
+
+    pub fn end_frame(&mut self) {
+        self.mouse_delta = Vec2::ZERO;
     }
 
     fn convert_to_screen(pos: Vec2, size: &PhysicalSize<u32>) -> Vec2{

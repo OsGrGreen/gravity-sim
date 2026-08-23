@@ -17,6 +17,7 @@ impl Transform {
     }
 
     pub fn new_from_pos(position: Vec3) -> Self {
+        println!("Creating a transform with posistion; {:?}", position);
         Self {
             position,
             rotation: Quat::IDENTITY,

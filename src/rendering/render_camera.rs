@@ -18,7 +18,8 @@ pub struct RenderCamera{
     radius: f32,
     pub perspective: Mat4,
     pub matrix: Mat4,
-    following: Option<ObjectId>
+    following: Option<ObjectId>,
+    follow_offset: Vec3,
 }
 
 const SQRT3:f32 = 1.7320508;
@@ -27,14 +28,14 @@ impl RenderCamera{
 
     pub fn new(start_pos: Vec3, target:Vec3, up:Vec3, front:Vec3, dim: (f32, f32)) -> RenderCamera{
 
-        let mut camera = RenderCamera{pos:start_pos,target:target,up:up, front:front, perspective:Mat4::ZERO, orientation : Quat::IDENTITY, radius: 20.0, matrix: Mat4::ZERO, following: None};
+        let mut camera = RenderCamera{pos:start_pos,target:target,up:up, front:front, perspective:Mat4::ZERO, orientation : Quat::IDENTITY, radius: 20.0, matrix: Mat4::ZERO, following: None, follow_offset: Vec3::new(0.0, 0.0, 0.0)};
         camera.matrix = camera.look_at();
         camera.perspective = calculate_perspective(dim);
         return camera;
     }
 
     pub fn init(dim: (f32, f32)) -> RenderCamera{
-        let mut camera = RenderCamera{pos:Vec3::ZERO,target:Vec3::new(0.0, 0.0, -2.0),up:Vec3::new(0.0, 1.0, 0.0), front:Vec3::new(0.0, 0.0, -1.0), perspective:Mat4::ZERO, orientation : Quat::IDENTITY, radius: 20.0, matrix: Mat4::ZERO, following: None};
+        let mut camera = RenderCamera{pos:Vec3::ZERO,target:Vec3::new(0.0, 0.0, -2.0),up:Vec3::new(0.0, 1.0, 0.0), front:Vec3::new(0.0, 0.0, -1.0), perspective:Mat4::ZERO, orientation : Quat::IDENTITY, radius: 20.0, matrix: Mat4::ZERO, following: None, follow_offset: Vec3::new(0.0, 0.0, 0.0)};
         camera.matrix = camera.look_at();
         camera.perspective = calculate_perspective(dim);
         return camera;
@@ -54,6 +55,25 @@ impl RenderCamera{
 
     pub fn target(&self) -> Vec3 {
         self.target
+    }
+
+    pub fn update_follow(&mut self,new_position: Vec3, object_rotation: Quat,) {
+        // Position of the camera relative to the player/object.
+        //self.orientation *= 
+            //object_rotation;
+        let camera_offset = object_rotation * self.follow_offset;
+
+        self.pos = new_position + camera_offset;
+
+        // Combine the object's orientation with the camera's
+        // own pitch/yaw rotation.
+        let camera_rotation = object_rotation * self.orientation;
+
+        // Assuming the camera looks along -Z.
+        self.target = self.pos + camera_rotation * Vec3::NEG_Z;
+
+        // Assuming Y is "up" in the camera's local coordinate system.
+        self.up = camera_rotation * Vec3::Y;
     }
 
     pub fn update(&mut self, yaw_updated: f32, pitch_updated: f32){
@@ -159,6 +179,11 @@ impl RenderCamera{
         self.target = new_target;
     }
 
+    pub fn set_orientation(&mut self, orit: Quat) {
+        self.orientation = orit;
+    }
+    
+
     pub fn look_at(&self) -> Mat4{
         let f = (self.target-self.pos).normalize();
         let mut u = self.up.normalize();
@@ -168,7 +193,7 @@ impl RenderCamera{
         let rotation = Mat4::from_cols(
             s.extend(0.0),
             u.extend(0.0),
-            f.extend(0.0),
+            (-f).extend(0.0),
             Vec4::new(0.0, 0.0, 0.0, 1.0),
         );    
         let translation = Mat4::from_translation(-self.pos);
