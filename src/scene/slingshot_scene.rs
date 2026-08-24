@@ -1,4 +1,4 @@
-use crate::{assetmanager::{CreatorManager, RenderManager}, scene::{Scene, SceneContent, objects::{self, SceneObjectBehaviour, SplineObject, object_creator::{centered_grid, create_generalized_grid, create_grid, paraboloid_grid}, physics::{bodies::RigidBody, controllers::{gravity_controller::PlayerGravity, line_controller::LineController, mouse_movement_controller::MouseDragController, movement_controller::SimpleMover, prediction_controller::PredictionController}}, renderable::{MeshRenderer, SplineRenderer}, transform::Transform}}, util::ray_library::{mouse_ray, ndc_to_intersection, ray_plane_intersection}};
+use crate::{managers::{CreatorManager, RenderManager}, scene::{Scene, SceneContent, objects::{self, SceneObjectBehaviour, SplineObject, object_creator::{centered_grid, create_generalized_grid, create_grid, paraboloid_grid}, physics::{bodies::RigidBody, controllers::{gravity_controller::PlayerGravity, line_controller::LineController, mouse_movement_controller::MouseDragController, movement_controller::SimpleMover, prediction_controller::PredictionController}}, renderable::{MeshRenderer, SplineRenderer, TextureMeshRenderer}, transform::Transform}}, util::ray_library::{mouse_ray, ndc_to_intersection, ray_plane_intersection}};
 use core::f32;
 use std::{collections::HashMap, hash::Hash, println};
 
@@ -31,19 +31,20 @@ impl Scene{
         render_manager.add_renderer("planet".to_string(), planet_renderer);
 
 
-        let mut player = WorldObject::new(0, Transform::new(), Some(Box::new(MeshRenderer::new("player".to_string()))), PhysicsObject::RigidBody(RigidBody::new(1.0)), None);
+        let mut player = WorldObject::new(0, Transform::new(), None, PhysicsObject::RigidBody(RigidBody::new(1.0)), None);
         player.data.transform.translate(Vec3::new(0.0, 0.0, 0.0));
         player.data.transform.scale(Vec3::new(0.4, 0.4, 0.4));
         //player.physics.disable();
         
+        let planet_texture = render_manager.new_texture(load_texture(display, include_bytes!(r"../../textures/planet.png")));
 
-        let mut planet1 = WorldObject::new(1,Transform::new(), Some(Box::new(MeshRenderer::new("planet".to_string()))), PhysicsObject::RigidBody(RigidBody::new(12.0)), None);
+        let mut planet1 = WorldObject::new(1,Transform::new(), Some(Box::new(TextureMeshRenderer::new("planet".to_string(), planet_texture.clone()))), PhysicsObject::RigidBody(RigidBody::new(12.0)), None);
         planet1.data.transform.translate(Vec3::new(3.0, 2.0, 0.0));
 
-        let mut planet2 = WorldObject::new(4,Transform::new(), Some(Box::new(MeshRenderer::new("planet".to_string()))), PhysicsObject::RigidBody(RigidBody::new(12.0)), None);
+        let mut planet2 = WorldObject::new(4,Transform::new(), Some(Box::new(TextureMeshRenderer::new("planet".to_string(), planet_texture.clone()))), PhysicsObject::RigidBody(RigidBody::new(12.0)), None);
         planet2.data.transform.translate(Vec3::new(-3.0, -2.0, 0.0));
 
-        let worldmouse = WorldObject::new(2, Transform::new(), Some(Box::new(MeshRenderer::new("player".to_string()))), PhysicsObject::RigidBody(RigidBody::new(0.0)), None);
+        let worldmouse = WorldObject::new(2, Transform::new(), None, PhysicsObject::RigidBody(RigidBody::new(0.0)), None);
 
 
         let mut camera = RenderCamera::new(Vec3::new(0.0, 0.0, 10.0), Vec3::new(0.0, 0.0, 0.0), Vec3::new(0.0, 1.0, 0.0), Vec3::new(0.0, 0.0, -1.0), window.inner_size().into());
@@ -72,15 +73,22 @@ impl Scene{
         //prediction.add_single(&player);
         //let mut player_movement: Movement<PlayerMover> = Movement::new(PlayerMover::new());
         //player_movement.add_single(&player);
-        let things: Vec<objects::SceneObject> = vec![SceneObject::World(player), SceneObject::World(planet1), SceneObject::World(worldmouse), SceneObject::Spline(spline), SceneObject::World(planet2), SceneObject::World(camera_posistion)];
+        let mut things: Vec<objects::SceneObject> = vec![SceneObject::World(player), SceneObject::World(planet1), SceneObject::World(worldmouse), SceneObject::Spline(spline), SceneObject::World(planet2), SceneObject::World(camera_posistion)];
 
+        let mut rng = rand::rng();
+        for i in 0..0{
+            let mut add_planet = WorldObject::new(things.len(), Transform::new(),Some(Box::new(MeshRenderer::new("planet".to_string()))), PhysicsObject::RigidBody(RigidBody::new(rng.random_range(0.1..20.0))), None);
+            add_planet.data.transform.translate(Vec3::new(rng.random_range(-20.0..20.0), rng.random_range(-20.0..20.0), rng.random_range(-20.0..20.0)));
+            //add_planet.physics.set_velocity(Vec3::new(rng.random_range(-1.5..1.5), rng.random_range(-2.0..2.0), 0.0));
+            things.push(SceneObject::World(add_planet));
+        }
         let (world_texture, depth_world_texture) = create_render_textures(&display,size.0, size.1);
 
 
 
         let mut return_scene= Scene { content: SceneContent { time: 0.0, world_objects: things, camera, lights: Vec::new(), render_objects: Vec::new()}, render_manager, controllers: vec![/*Box::new(mouse), Box::new(line), */Box::new(gravity), Box::new(prediction), Box::new(movement), Box::new(player_movement)], scene_tex: world_texture, scene_depth: depth_world_texture};
         let mut creator = CreatorManager::new(&mut return_scene, display);
-        create_generalized_grid(Vec3::new(0.0, -5.0, 0.0), Vec3::new(0.0, 1.0, 0.0), 30, 30, 0.5, |ctx| paraboloid_grid(ctx), &mut creator);
+        create_generalized_grid(Vec3::new(0.0, -15.0, 0.0), Vec3::new(0.0, 1.0, 0.0), 100, 100, 2.0, |ctx| paraboloid_grid(ctx), &mut creator);
         //create_grid(Vec3::new(0.0, 0.0, -2.0), Vec3::new(0.0, 0.0, 1.0), 3, 2, 1.0, &mut creator);
         //return_scene.add_texture(&ObjectId::new(1), display, include_bytes!(r"../../textures/planet.png"));
         return return_scene;

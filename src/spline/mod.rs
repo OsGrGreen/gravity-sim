@@ -3,7 +3,7 @@ use std::io::stdout;
 use glam::{Mat4, Quat, Vec3};
 use glium::{glutin::{surface::WindowSurface}, index::PrimitiveType, Display, IndexBuffer, VertexBuffer};
 
-use crate::{assetmanager::RenderManager, rendering::{self, render::{Renderer, VertexSimple}}, util};
+use crate::{managers::RenderManager, rendering::{self, render::{Renderer, VertexSimple}}, util};
 
 #[derive(Debug)]
 pub struct BezierCurve{

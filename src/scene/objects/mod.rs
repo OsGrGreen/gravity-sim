@@ -9,7 +9,7 @@ use glium::{framebuffer::SimpleFrameBuffer, Texture2d};
 use renderable::RenderObject;
 use physics::PhysicsObject;
 
-use crate::{assetmanager::RenderManager, rendering::{RenderContext, render::Renderer, render_camera::RenderCamera}, scene::objects::{colliders::Collider, renderable::{LineRenderer, Renderable, SplineRenderer}, transform::Transform}, spline::Spline};
+use crate::{managers::RenderManager, rendering::{RenderContext, render::Renderer, render_camera::RenderCamera}, scene::objects::{colliders::Collider, renderable::{LineRenderer, Renderable, SplineRenderer}, transform::Transform}, spline::Spline};
 
 
 

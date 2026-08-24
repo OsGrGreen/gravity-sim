@@ -8,7 +8,7 @@ use objects::{physics::{PhysicsObject}, renderable::RenderObject, WorldObject};
 use rand::Rng;
 use winit::{event::MouseButton, keyboard, window::Window};
 
-use crate::{assetmanager::{RenderManager, handles}, rendering::{RenderContext, render::{self, Renderer}, render_camera::RenderCamera}, scene::{objects::{ObjectId, SceneObject, SceneObjectBehaviour, physics::{bodies::{RigidBody, StaticBody}, controllers::{self, Controller, gravity_controller::Gravity, movement_controller::{Movement, QuatMover}, path_controller::{self, Path}}}, renderable::{MeshRenderer, Renderable}, transform::Transform}, renders::TemporaryRender}, spline::Spline, util::{create_fbo, create_render_textures, input_handler::{self, InputHandler}, load_texture}};
+use crate::{managers::{RenderManager, handles}, rendering::{RenderContext, render::{self, Renderer}, render_camera::RenderCamera}, scene::{objects::{ObjectId, SceneObject, SceneObjectBehaviour, physics::{bodies::{RigidBody, StaticBody}, controllers::{self, Controller, gravity_controller::Gravity, movement_controller::{Movement, QuatMover}, path_controller::{self, Path}}}, renderable::{MeshRenderer, Renderable}, transform::Transform}, renders::TemporaryRender}, spline::Spline, util::{create_fbo, create_render_textures, input_handler::{self, InputHandler}, load_texture}};
 
 pub mod bezier_surface;
 pub mod objects;
@@ -40,7 +40,6 @@ impl Scene{
     }
 
     pub fn draw(&mut self, display: &Display<WindowSurface>){
-        println!("Matrix for camera is {}", self.content.camera.look_at());
         let mut fbo = create_fbo(&display, &self.scene_tex, &self.scene_depth);
         fbo.clear_color_and_depth((0.05, 0.05, 0.14, 1.0), 1.0);
         let mut context = RenderContext{

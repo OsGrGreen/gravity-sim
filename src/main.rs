@@ -13,11 +13,11 @@ use std::{collections::HashMap, time::Instant};
 
 mod scene;
 mod spline;
-mod assetmanager;
+mod managers;
 mod rendering;
 use rendering::{render::{Renderer, Vertex, VertexSimple}, render_camera::RenderCamera, text::{format_to_exact_length, RenderedText, TextVbo}};
 
-use crate::assetmanager::RenderManager;
+use crate::managers::RenderManager;
 
 
 mod util;
@@ -179,7 +179,6 @@ fn main() {
                 display.resize(window_size.into());
             },
             winit::event::WindowEvent::RedrawRequested => {
-                ////println!();
                 let mainTimer = Instant::now();
                 //Physics step
                 let new_time = Instant::now();
@@ -195,9 +194,11 @@ fn main() {
                 while accumulator >= dt {
                     let physicsTimer = Instant::now();
                     return_scene.update_physics(dt, &input_handler);
+                    //println!("Physics: {:.2?}", physicsTimer.elapsed());
+                    let instant = physicsTimer.elapsed();
                     return_scene.update_camera(dt, &input_handler);
+                    //println!("Update camera: {:.2?}", physicsTimer.elapsed() - instant);
                     input_handler.end_frame();
-                    ////println!("Physics: {:.2?}", physicsTimer.elapsed());
                     t += dt;
                     accumulator -= dt;
                 }
@@ -212,7 +213,7 @@ fn main() {
                 let mut drawTimer = Instant::now();
                 let mut target = display.draw();
                 
-                ////println!("After fbo creation: {:.2?}", drawTimer.elapsed());
+                //println!("After fbo creation: {:.2?}", drawTimer.elapsed());
                 drawTimer = Instant::now();
                 return_scene.draw(&display);
                 //println!("Draw scene: {:.2?}", drawTimer.elapsed());

@@ -1,8 +1,8 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use glium::{Display, Texture2d, glutin::surface::WindowSurface};
 
-use crate::{assetmanager::handles::{MaterialHandle, MeshHandle, TextureHandle}, rendering::{Material, Mesh, render::Renderer}, scene::{Scene, objects::WorldObject}};
+use crate::{managers::handles::{MaterialHandle, MeshHandle, TextureHandle}, rendering::{Material, Mesh, render::Renderer}, scene::{Scene, objects::{ObjectId, SceneObject, WorldObject}}};
 
 pub mod handles;
 
@@ -25,6 +25,23 @@ impl <'a> CreatorManager <'a> {
     }
 }
 
+pub struct ObjectManager {
+    objects: Vec<SceneObject>,
+    world_objects: HashSet<ObjectId>,
+    updatable_objects: HashSet<ObjectId>,
+    octree: f32,
+}
+
+impl ObjectManager {
+    pub fn new() -> ObjectManager {
+        ObjectManager { objects: Vec::new(), world_objects: HashSet::new(), updatable_objects: HashSet::new(), octree: 0.0 }
+    }
+
+    pub fn add_object() {
+        
+    }
+}
+
 pub struct RenderManager {
     pub meshes: HashMap<MeshHandle, Mesh>,
     mesh_count: usize,
@@ -34,7 +51,7 @@ pub struct RenderManager {
     texture_count: usize,
     pub renderers: HashMap<String, Renderer>,
     render_counter: usize,
-
+    pub last_used_texture: Option<TextureHandle>,
 }
 
 impl RenderManager {
@@ -51,6 +68,7 @@ impl RenderManager {
             
             renderers: HashMap::default(), 
             render_counter: 0,
+            last_used_texture: None,
         }
     }
     

@@ -80,7 +80,6 @@ fn update(&mut self, scene: &mut SceneContent, input: &InputHandler) {
                         if obj2.physics.mass() != 0.0 {
                             let (dir, distance) = obj1.distance(obj2);
                             let force = self.G*(obj1.physics.mass()*obj2.physics.mass())/(distance*distance);
-                            println!("Force is : {:?} in direction: {:?}, distance: {:?}, mass 1: {}, mass 2: {}", force, dir, distance, obj1.physics.mass(), obj2.physics.mass());
                             obj1.physics.add_force(dir.normalize()*force);
                             //println!("World object real state during simulation: ({:?}, {:?})", obj1.data.transform, obj1.physics);
                             //Collision

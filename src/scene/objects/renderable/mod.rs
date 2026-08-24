@@ -3,8 +3,7 @@ use std::{any::Any, println};
 use glam::{Mat4, Vec3};
 use glium::{Display, IndexBuffer, Surface, Texture2d, Vertex, VertexBuffer, framebuffer::SimpleFrameBuffer, glutin::surface::WindowSurface, index::{IndicesSource, PrimitiveType}, uniforms::MagnifySamplerFilter, vertex::VerticesSource};
 
-use crate::{assetmanager::{RenderManager, handles::{MaterialHandle, MeshHandle}}, rendering::{RenderContext, render::{Renderer, VertexSimple}, render_camera::RenderCamera}, scene::objects::transform::Transform, spline::Spline};
-
+use crate::{managers::{RenderManager, handles::{MaterialHandle, MeshHandle, TextureHandle}}, rendering::{RenderContext, render::{Renderer, VertexSimple}, render_camera::RenderCamera, text}, scene::objects::transform::Transform, spline::Spline};
 pub mod point;
 
 
@@ -28,6 +27,58 @@ pub struct RenderObject<>{
     instanced_vbo: Option<VertexBuffer<VertexSimple>>
 }
 
+pub struct TextureMeshRenderer {
+    pub render_id: String,
+    pub texture: TextureHandle
+}
+
+impl  TextureMeshRenderer {
+    pub fn new(id: String, texture: TextureHandle) -> TextureMeshRenderer{
+        TextureMeshRenderer { render_id: id, texture}
+    }
+}
+
+impl Renderable for TextureMeshRenderer {
+    fn render(
+        &self,
+        transform: &Transform,
+        context: &mut RenderContext,
+        manager: &RenderManager,
+    ) {
+        let possible_renderer = manager.renderers.get(&self.render_id);
+        if let Some(renderer) = possible_renderer {
+            let found_material = manager.materials.get(&renderer.material);
+            let found_mesh = manager.meshes.get(&renderer.mesh);
+            // Not used right now since I can not mutate the RenderManager...
+            if manager.last_used_texture.is_some_and(|x| x == self.texture) {
+                if let Some((material, mesh)) = found_material.zip(found_mesh) {
+                    let fbo = &mut context.framebuffer;
+                    let camera = context.camera;
+                    fbo.draw(&mesh.vertices, &mesh.indices, &material.program, &uniform! {projection: camera.perspective.to_cols_array_2d(), view: camera.getMatrix(), model: transform.model_matrix().to_cols_array_2d()}, &material.draw_params).unwrap();
+                } else {
+                    println!("Did not found mesh or material");
+                }
+            } else {
+                let found_texture = manager.textures.get(&self.texture);
+                if let Some(((material, mesh), texture)) = found_material.zip(found_mesh).zip(found_texture) {
+                    let fbo = &mut context.framebuffer;
+                    let camera = context.camera;
+                    fbo.draw(&mesh.vertices, &mesh.indices, &material.program, &uniform! {tex: texture.sampled().magnify_filter(MagnifySamplerFilter::Nearest), projection: camera.perspective.to_cols_array_2d(), view: camera.getMatrix(), model: transform.model_matrix().to_cols_array_2d()}, &material.draw_params).unwrap();
+                } else {
+                    println!("Did not found mesh or material");
+                }
+            }
+        }
+    }
+
+    fn as_any(&mut self) -> &mut dyn Any {
+        self
+    }
+
+    fn id(&self) -> String {
+        self.render_id.clone()
+    }
+}
 
 pub struct MeshRenderer {
     pub render_id: String,
@@ -51,10 +102,6 @@ impl Renderable for MeshRenderer {
             let found_material = manager.materials.get(&renderer.material);
             let found_mesh = manager.meshes.get(&renderer.mesh);
 
-            //let texture = manager.textures[self.texture]
-            //if let Some(texture) = &self.material.texture {
-                //fbo.draw(&renderer.vbo, &renderer.indicies, &renderer.program, &uniform! {tex: texture.sampled().magnify_filter(MagnifySamplerFilter::Nearest), projection: camera.perspective.to_cols_array_2d(), view: camera.getMatrix(), model: transform.model_matrix().to_cols_array_2d()}, &renderer.draw_params).unwrap();
-            //} else {
             if let Some((material, mesh)) = found_material.zip(found_mesh) {
                 let fbo = &mut context.framebuffer;
                 let camera = context.camera;
@@ -63,7 +110,6 @@ impl Renderable for MeshRenderer {
                 println!("Did not found mesh or material");
             }
         }
-        //}
     }
     
     fn as_any(&mut self) -> &mut dyn Any {
