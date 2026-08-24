@@ -1,7 +1,7 @@
 
 use glam::{Mat4, Vec3};
 
-use crate::{scene::{Scene, SceneContent, objects::{self, ObjectId, SceneObject, WorldObject}}, util::{input_handler::InputHandler, ray_library::{mouse_ray, ray_plane_intersection}}};
+use crate::{scene::{SceneContent, objects::{ObjectId, SceneObject, WorldObject}}, util::{input_handler::InputHandler, ray_library::{mouse_ray, ray_plane_intersection}}};
 
 use super::Controller;
 

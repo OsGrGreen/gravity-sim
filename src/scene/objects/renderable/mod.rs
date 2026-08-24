@@ -1,9 +1,8 @@
 use std::{any::Any, println};
 
-use glam::{Mat4, Vec3};
-use glium::{Display, IndexBuffer, Surface, Texture2d, Vertex, VertexBuffer, framebuffer::SimpleFrameBuffer, glutin::surface::WindowSurface, index::{IndicesSource, PrimitiveType}, uniforms::MagnifySamplerFilter, vertex::VerticesSource};
+use glium::{Display, IndexBuffer, Surface, VertexBuffer, glutin::surface::WindowSurface, uniforms::MagnifySamplerFilter};
 
-use crate::{managers::{RenderManager, handles::{MaterialHandle, MeshHandle, TextureHandle}}, rendering::{RenderContext, render::{Renderer, VertexSimple}, render_camera::RenderCamera, text}, scene::objects::transform::Transform, spline::Spline};
+use crate::{managers::{RenderManager, handles::TextureHandle}, rendering::{RenderContext, render::VertexSimple}, scene::objects::transform::Transform, spline::Spline};
 pub mod point;
 
 

@@ -1,6 +1,6 @@
 use glium::Surface;
 
-use crate::{managers::{RenderManager, handles::MaterialHandle}, rendering::RenderContext, scene::objects::{renderable::Renderable, transform::Transform}};
+use crate::{managers::RenderManager, rendering::RenderContext, scene::objects::transform::Transform};
 
 #[derive(Debug)]
 pub struct TemporaryRender{

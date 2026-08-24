@@ -1,7 +1,6 @@
 use glam::Vec3;
-use rand::Rng;
 
-use crate::rendering::render::{Vertex, VertexSimple};
+use crate::rendering::render::VertexSimple;
 
 #[derive(Copy, Clone,Debug)]
 pub struct GrassVertex {
@@ -51,7 +50,7 @@ impl Surface{
         //Previously added random offset to each posistion
         //However, this will never make the grass have the same posistion twice
         //Which looks bad when updating the grass many times in a row
-        let mut rng = rand::rng();
+        let rng = rand::rng();
         for quad_z in 0..self.num_quads_z {
             for quad_x in 0..self.num_quads_x {
                 let start_x = quad_x * 3;

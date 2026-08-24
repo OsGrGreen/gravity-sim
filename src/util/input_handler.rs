@@ -1,7 +1,7 @@
-use std::{collections::{hash_set::Iter, HashSet}, f32::consts::E};
+use std::collections::{hash_set::Iter, HashSet};
 
 use glam::Vec2;
-use winit::{dpi::{PhysicalPosition, PhysicalSize}, event::{DeviceId, ElementState, KeyEvent, MouseButton, WindowEvent}, keyboard::{self, KeyCode, PhysicalKey}};
+use winit::{dpi::{PhysicalPosition, PhysicalSize}, event::{DeviceId, ElementState, KeyEvent, MouseButton}, keyboard::{self, KeyCode, PhysicalKey}};
 
 pub struct InputHandler{
     movement: Vec2,

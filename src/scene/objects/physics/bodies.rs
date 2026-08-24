@@ -2,7 +2,6 @@ use glam::Vec3;
 
 use crate::scene::objects::transform::Transform;
 
-use super::PhysicsObject;
 
 #[derive(Clone, Debug)]
 pub struct RigidBody{

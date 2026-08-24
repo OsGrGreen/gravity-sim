@@ -6,7 +6,7 @@ use winit::window::Window; */
 
 
 use glam::Mat4;
-use glium::{Display, DrawParameters, Frame, PolygonMode, Program, Surface, VertexBuffer, glutin::surface::WindowSurface, program::TransformFeedbackMode, uniforms::{AsUniformValue, Uniforms, UniformsStorage}};
+use glium::{Display, DrawParameters, Frame, Surface, VertexBuffer, glutin::surface::WindowSurface, program::TransformFeedbackMode, uniforms::{AsUniformValue, Uniforms, UniformsStorage}};
 
 use crate::{managers::{RenderManager, handles::{MaterialHandle, MeshHandle}}, rendering::{Material, Mesh}, util::{read_model, read_shader}};
 

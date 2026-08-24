@@ -2,9 +2,9 @@
 use core::f32;
 use std::println;
 
-use glam::{Mat4, Quat, Vec3, Vec4};
+use glam::{Quat, Vec3};
 
-use crate::{scene::{Scene, SceneContent, objects::{ObjectId, SceneObject, SceneObjectBehaviour, WorldObject, transform::Transform}, renders::TemporaryRender}, util::input_handler::InputHandler};
+use crate::{scene::{SceneContent, objects::{ObjectId, SceneObject, SceneObjectBehaviour, WorldObject}, renders::TemporaryRender}, util::input_handler::InputHandler};
 
 use super::Controller;
 
@@ -99,7 +99,7 @@ impl QuatMover{
 
     fn move_world(&mut self, object_id: ObjectId, scene: &mut SceneContent, input: &InputHandler) {
         // Read user-input
-        let mut new_renders: Vec<TemporaryRender> = Vec::new();
+        let new_renders: Vec<TemporaryRender> = Vec::new();
 
         let object = &mut scene.objects()[object_id.index];
         match object {

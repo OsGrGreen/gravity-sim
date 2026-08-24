@@ -1,6 +1,5 @@
-use glam::{Mat4, Vec3};
 
-use crate::{scene::{SceneContent, objects::{self, ObjectId, SplineObject, WorldObject, physics::controllers::Controller, renderable::LineRenderer}}, spline::Spline, util::{input_handler::InputHandler, ray_library::{mouse_ray, ray_plane_intersection}}};
+use crate::{scene::{SceneContent, objects::{self, ObjectId, WorldObject, physics::controllers::Controller}}, spline::Spline, util::input_handler::InputHandler};
 
 pub struct Line{
     pub line: ObjectId,

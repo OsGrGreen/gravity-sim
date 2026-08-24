@@ -2,20 +2,19 @@
 extern crate glium;
 extern crate winit;
 
-use rand::Rng;
-use glam::{Mat4, Vec2, Vec3};
-use scene::{objects::{renderable::{point::WorldPoint}, WorldObject}, Scene};
-use util::{create_fbo, create_render_textures, input_handler::InputHandler, load_icon, ray_library::{distance_ray_point, ndc_to_direction, ndc_to_point}, read_model};
-use winit::{event::{MouseButton, MouseScrollDelta}, event_loop::{ControlFlow, EventLoop}, keyboard, window::{Fullscreen, Window}};
-use glium::{framebuffer::SimpleFrameBuffer, glutin::surface::WindowSurface, implement_vertex, index::PrimitiveType, texture::DepthTexture2d, uniforms::{MagnifySamplerFilter, MinifySamplerFilter}, Blend, BlendingFunction, Display, LinearBlendingFactor, Surface, Texture2d, VertexBuffer};
+use glam::{Vec2, Vec3};
+use scene::{objects::renderable::{point::WorldPoint}, Scene};
+use util::{input_handler::InputHandler, load_icon};
+use winit::{event::MouseScrollDelta, event_loop::{ControlFlow, EventLoop}, keyboard, window::{Fullscreen, Window}};
+use glium::{glutin::surface::WindowSurface, implement_vertex, uniforms::MagnifySamplerFilter, Display, Surface};
 use core::f32;
-use std::{collections::HashMap, time::Instant};
+use std::time::Instant;
 
 mod scene;
 mod spline;
 mod managers;
 mod rendering;
-use rendering::{render::{Renderer, Vertex, VertexSimple}, render_camera::RenderCamera, text::{format_to_exact_length, RenderedText, TextVbo}};
+use rendering::{render::Vertex, render_camera::RenderCamera};
 
 use crate::managers::RenderManager;
 
@@ -96,7 +95,7 @@ fn main() {
 
 
     /*The point that symbolises where the mouse is! */
-    let mut point = WorldPoint::new(0.5,Vec2::ZERO,Vec3::ZERO);
+    let point = WorldPoint::new(0.5,Vec2::ZERO,Vec3::ZERO);
 
     //Quad that covers the whole screen
     let screen_quad:Vec<Vertex> = vec![
@@ -125,7 +124,7 @@ fn main() {
     let mut total_fps: usize = 0;
     let mut timer = Instant::now();
     let mut overall_fps = 0.0;
-    let mut rng = rand::rng();
+    let rng = rand::rng();
     let smoothing = 0.6;  //For fps
     let mut frames:f32 = 0.0;
 

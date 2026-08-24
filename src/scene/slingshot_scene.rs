@@ -1,14 +1,12 @@
-use crate::{managers::{CreatorManager, RenderManager}, scene::{Scene, SceneContent, objects::{self, SceneObjectBehaviour, SplineObject, object_creator::{centered_grid, create_generalized_grid, create_grid, paraboloid_grid}, physics::{bodies::RigidBody, controllers::{gravity_controller::PlayerGravity, line_controller::LineController, mouse_movement_controller::MouseDragController, movement_controller::SimpleMover, prediction_controller::PredictionController}}, renderable::{MeshRenderer, SplineRenderer, TextureMeshRenderer}, transform::Transform}}, util::ray_library::{mouse_ray, ndc_to_intersection, ray_plane_intersection}};
-use core::f32;
-use std::{collections::HashMap, hash::Hash, println};
+use crate::{managers::{CreatorManager, RenderManager}, scene::{Scene, SceneContent, objects::{self, SceneObjectBehaviour, SplineObject, object_creator::{create_generalized_grid, paraboloid_grid}, physics::{bodies::RigidBody, controllers::{gravity_controller::PlayerGravity, line_controller::LineController, mouse_movement_controller::MouseDragController, movement_controller::SimpleMover, prediction_controller::PredictionController}}, renderable::{MeshRenderer, SplineRenderer, TextureMeshRenderer}, transform::Transform}}};
 
-use glam::{Mat4, Vec3, Vec4, Vec4Swizzles};
-use glium::{framebuffer::SimpleFrameBuffer, glutin::surface::WindowSurface, texture::DepthTexture2d, Display, Surface, Texture2d};
-use crate::scene::objects::{physics::{PhysicsObject}, renderable::RenderObject, WorldObject};
+use glam::Vec3;
+use glium::{glutin::surface::WindowSurface, Display};
+use crate::scene::objects::{physics::{PhysicsObject}, WorldObject};
 use rand::Rng;
-use winit::{event::MouseButton, keyboard, window::Window};
+use winit::window::Window;
 
-use crate::{rendering::{render::{self, Renderer}, render_camera::RenderCamera}, scene::objects::{ObjectId, physics::controllers::{self, Controller, gravity_controller::Gravity, movement_controller::{Movement, QuatMover}, path_controller::{self, Path}}}, spline::Spline, util::{create_fbo, create_render_textures, input_handler::{self, InputHandler}, load_texture}};
+use crate::{rendering::{render::{Renderer}, render_camera::RenderCamera}, scene::objects::physics::controllers::{Controller, movement_controller::{Movement, QuatMover}}, spline::Spline, util::{create_render_textures, load_texture}};
 use crate::scene::SceneObject;
 use crate::scene::controllers::line_controller::Line;
 
@@ -66,10 +64,10 @@ impl Scene{
         let mut player_movement = Movement::new(QuatMover::new());
         player_movement.add_single(&player);
 
-        let mut movement = Movement::new(SimpleMover::new(0.25));
+        let movement = Movement::new(SimpleMover::new(0.25));
         //movement.add_single(&camera_posistion);
 
-        let mut prediction = PredictionController::new(250, 0.2, gravity.clone());
+        let prediction = PredictionController::new(250, 0.2, gravity.clone());
         //prediction.add_single(&player);
         //let mut player_movement: Movement<PlayerMover> = Movement::new(PlayerMover::new());
         //player_movement.add_single(&player);

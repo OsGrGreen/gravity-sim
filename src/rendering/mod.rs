@@ -1,6 +1,6 @@
-use glium::{Display, DrawParameters, IndexBuffer, Program, Texture2d, VertexBuffer, draw_parameters, framebuffer::SimpleFrameBuffer, glutin::surface::WindowSurface, program::TransformFeedbackMode};
+use glium::{Display, DrawParameters, IndexBuffer, Program, VertexBuffer, framebuffer::SimpleFrameBuffer, glutin::surface::WindowSurface, program::TransformFeedbackMode};
 
-use crate::rendering::{render::{Renderer, Vertex, VertexSimple}, render_camera::RenderCamera};
+use crate::rendering::{render::Vertex, render_camera::RenderCamera};
 
 pub mod render;
 pub mod render_camera;

@@ -1,6 +1,5 @@
-use glam::Vec3;
 
-use crate::{scene::{Scene, SceneContent, objects::{ObjectId, SceneObject, SceneObjectBehaviour, WorldObject, physics::{self, PhysicsObject, bodies::RigidBody, controllers::Controller}, renderable::{self, MeshRenderer}, transform::{self, Transform}}, renders::TemporaryRender}, util::input_handler::InputHandler};
+use crate::scene::{SceneContent, objects::{ObjectId, SceneObject, SceneObjectBehaviour, WorldObject, physics::{PhysicsObject, controllers::Controller}, transform::{Transform}}, renders::TemporaryRender};
 
 #[derive(Debug)]
 pub struct PredictionState {

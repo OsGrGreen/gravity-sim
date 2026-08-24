@@ -5,11 +5,9 @@ pub mod colliders;
 pub mod object_creator;
 
 use glam::Vec3;
-use glium::{framebuffer::SimpleFrameBuffer, Texture2d};
-use renderable::RenderObject;
 use physics::PhysicsObject;
 
-use crate::{managers::RenderManager, rendering::{RenderContext, render::Renderer, render_camera::RenderCamera}, scene::objects::{colliders::Collider, renderable::{LineRenderer, Renderable, SplineRenderer}, transform::Transform}, spline::Spline};
+use crate::{managers::RenderManager, rendering::RenderContext, scene::objects::{colliders::Collider, renderable::{Renderable, SplineRenderer}, transform::Transform}, spline::Spline};
 
 
 

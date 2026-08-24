@@ -1,5 +1,4 @@
-use std::{fs, str};
-use std::fs::File;
+use std::str;
 use glium::framebuffer::SimpleFrameBuffer;
 use glium::glutin::surface::WindowSurface;
 use glium::texture::DepthTexture2d;

@@ -1,6 +1,5 @@
-use std::io::stdout;
 
-use glam::{Mat4, Quat, Vec3};
+use glam::{Quat, Vec3};
 use glium::{glutin::{surface::WindowSurface}, index::PrimitiveType, Display, IndexBuffer, VertexBuffer};
 
 use crate::{managers::RenderManager, rendering::{self, render::{Renderer, VertexSimple}}, util};
@@ -169,9 +168,9 @@ impl Spline{
             .. Default::default()
         };
 
-        let mut vbo: VertexBuffer<VertexSimple> = glium::VertexBuffer::new(display, &self.to_vertex()).unwrap();
+        let vbo: VertexBuffer<VertexSimple> = glium::VertexBuffer::new(display, &self.to_vertex()).unwrap();
         //println!("{:?}", &self.to_vertex());
-        let mut inds = glium::IndexBuffer::new(display,PrimitiveType::Patches {vertices_per_patch: 4,},
+        let inds = glium::IndexBuffer::new(display,PrimitiveType::Patches {vertices_per_patch: 4,},
             &self.get_indicies()).unwrap();
         //println!("{:?}", &self.get_indicies());
         let surface_renderer = rendering::render::Renderer::new(render_manager, &vec![], &vec![], Some(PrimitiveType::Patches {vertices_per_patch: 4,}), &surface_vert_shader, &surface_frag_shader, /*Some(geo_shader)*/ None, Some(&surface_tess_ctrl_shader), Some(&surface_tess_eval_shader), &display, Some(line_params), None).unwrap();

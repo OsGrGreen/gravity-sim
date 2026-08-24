@@ -1,7 +1,6 @@
 
-use std::time;
 
-use crate::{scene::{Scene, SceneContent, objects::{ObjectId, SceneObjectBehaviour}}, spline::Spline, util::input_handler::InputHandler};
+use crate::{scene::{SceneContent, objects::{ObjectId, SceneObjectBehaviour}}, spline::Spline, util::input_handler::InputHandler};
 
 use super::Controller;
 
@@ -20,7 +19,7 @@ impl Path{
 
 impl Controller for Path{
     fn update(&mut self, scene: &mut SceneContent, _: &InputHandler) {
-        let mut objects = scene.objects();
+        let objects = scene.objects();
         for id in &self.ids {
             let obj = &mut objects[id.index];
             let new_pos = self.spline.evaluate(self.t);

@@ -1,14 +1,13 @@
 use core::f32;
-use std::{collections::HashMap, hash::Hash, println};
 
-use glam::{Mat4, Vec3, Vec4, Vec4Swizzles};
-use glium::{Display, Surface, Texture2d, framebuffer::SimpleFrameBuffer, glutin::surface::WindowSurface, texture::{DepthTexture2d, TextureHandle}};
+use glam::Vec3;
+use glium::{Display, Surface, Texture2d, glutin::surface::WindowSurface, texture::DepthTexture2d};
 use light::Light;
-use objects::{physics::{PhysicsObject}, renderable::RenderObject, WorldObject};
+use objects::{physics::{PhysicsObject}, WorldObject};
 use rand::Rng;
-use winit::{event::MouseButton, keyboard, window::Window};
+use winit::{event::MouseButton, window::Window};
 
-use crate::{managers::{RenderManager, handles}, rendering::{RenderContext, render::{self, Renderer}, render_camera::RenderCamera}, scene::{objects::{ObjectId, SceneObject, SceneObjectBehaviour, physics::{bodies::{RigidBody, StaticBody}, controllers::{self, Controller, gravity_controller::Gravity, movement_controller::{Movement, QuatMover}, path_controller::{self, Path}}}, renderable::{MeshRenderer, Renderable}, transform::Transform}, renders::TemporaryRender}, spline::Spline, util::{create_fbo, create_render_textures, input_handler::{self, InputHandler}, load_texture}};
+use crate::{managers::{RenderManager, handles}, rendering::{RenderContext, render::{Renderer}, render_camera::RenderCamera}, scene::{objects::{ObjectId, SceneObject, SceneObjectBehaviour, physics::{bodies::{RigidBody, StaticBody}, controllers::{self, Controller, gravity_controller::Gravity, movement_controller::{Movement, QuatMover}, path_controller::{Path}}}, renderable::MeshRenderer, transform::Transform}, renders::TemporaryRender}, spline::Spline, util::{create_fbo, create_render_textures, input_handler::{InputHandler}, load_texture}};
 
 pub mod bezier_surface;
 pub mod objects;
@@ -231,7 +230,7 @@ impl Scene{
         spline.insert_c2(Vec3::new(-2.0, 0.0, 0.0));*/
 
         let loop_spline = Spline::new_circle(Vec3::ZERO, 2.0, 0.0, 0.0, 0.0);
-        let mut path_controller = Path::new(loop_spline, 0.01);
+        let path_controller = Path::new(loop_spline, 0.01);
 
         //path_controller.add(vec![&sun]);
 
@@ -248,7 +247,7 @@ impl Scene{
         let (world_texture, depth_world_texture) = create_render_textures(&display,size.0, size.1);
 
 
-        let mut return_scene = Scene { content: SceneContent { time: 0.0, world_objects: solar_system, camera: RenderCamera::new(Vec3::new(0.0, 0.0, 15.0), Vec3::new(0.0, 0.0, 0.0), Vec3::new(0.0, 1.0, 0.0), Vec3::new(0.0, 0.0, -1.0), window.inner_size().into()),  lights: Vec::new(), render_objects: Vec::new()}, render_manager,  controllers: vec![Box::new(gravity), Box::new(path_controller)], scene_tex: world_texture, scene_depth: depth_world_texture};
+        let return_scene = Scene { content: SceneContent { time: 0.0, world_objects: solar_system, camera: RenderCamera::new(Vec3::new(0.0, 0.0, 15.0), Vec3::new(0.0, 0.0, 0.0), Vec3::new(0.0, 1.0, 0.0), Vec3::new(0.0, 0.0, -1.0), window.inner_size().into()),  lights: Vec::new(), render_objects: Vec::new()}, render_manager,  controllers: vec![Box::new(gravity), Box::new(path_controller)], scene_tex: world_texture, scene_depth: depth_world_texture};
         
         //return_scene.add_texture(&ObjectId::new(0), display, include_bytes!(r"../../textures/sun.png"));
         //return_scene.add_texture(&ObjectId::new(1), display, include_bytes!(r"../../textures/planet.png"));

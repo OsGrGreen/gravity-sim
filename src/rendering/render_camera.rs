@@ -1,9 +1,7 @@
 
 use core::f32;
-use std::println;
 
-use glam::{Mat4, Quat, Vec3, Vec4, Vec4Swizzles};
-use winit::window::Window;
+use glam::{Mat4, Quat, Vec3, Vec4};
 
 use crate::scene::objects::ObjectId;
 

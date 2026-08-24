@@ -1,7 +1,7 @@
 use glam::Vec3;
-use glium::{DrawParameters, PolygonMode};
+use glium::PolygonMode;
 
-use crate::{managers::{CreatorManager, RenderManager}, rendering::render::{Renderer, Vertex}, scene::objects::{ObjectId, WorldObject, physics::{self, PhysicsObject, bodies::StaticBody}, renderable::MeshRenderer, transform::Transform}, util::read_shader};
+use crate::{managers::CreatorManager, rendering::render::{Renderer, Vertex}, scene::objects::{ObjectId, WorldObject, physics::{PhysicsObject}, renderable::MeshRenderer, transform::Transform}, util::read_shader};
 
 
 pub struct GridContext {
