@@ -11,13 +11,13 @@ impl Controller for GridGravityController {
         // For each vertex in the renderer we need to displace it according to the normal.
     }
 
-    fn add(&mut self, objects: Vec<&crate::scene::objects::WorldObject>) {
+    fn add(&mut self, objects: Vec<&ObjectId>) {
         for obj in objects{
-            self.ids.push(obj.data.id);
+            self.ids.push(*obj);
         }
     }
     
-    fn add_single(&mut self, object: &crate::scene::objects::WorldObject) {
-        self.ids.push(object.data.id);
+    fn add_single(&mut self, object: &ObjectId) {
+        self.ids.push(*object);
     }
 }

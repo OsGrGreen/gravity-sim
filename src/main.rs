@@ -11,6 +11,7 @@ use core::f32;
 use std::time::Instant;
 
 mod scene;
+mod octree;
 mod spline;
 mod managers;
 mod rendering;
@@ -193,10 +194,10 @@ fn main() {
                 while accumulator >= dt {
                     let physicsTimer = Instant::now();
                     return_scene.update_physics(dt, &input_handler);
-                    //println!("Physics: {:.2?}", physicsTimer.elapsed());
+                    println!("Physics: {:.2?}", physicsTimer.elapsed());
                     let instant = physicsTimer.elapsed();
                     return_scene.update_camera(dt, &input_handler);
-                    //println!("Update camera: {:.2?}", physicsTimer.elapsed() - instant);
+                    println!("Update camera: {:.2?}", physicsTimer.elapsed() - instant);
                     input_handler.end_frame();
                     t += dt;
                     accumulator -= dt;
@@ -212,22 +213,27 @@ fn main() {
                 let mut drawTimer = Instant::now();
                 let mut target = display.draw();
                 
-                //println!("After fbo creation: {:.2?}", drawTimer.elapsed());
+                println!("After fbo creation: {:.2?}", drawTimer.elapsed());
                 drawTimer = Instant::now();
                 return_scene.draw(&display);
-                //println!("Draw scene: {:.2?}", drawTimer.elapsed());
+                println!("Draw scene: {:.2?}", drawTimer.elapsed());
                 drawTimer = Instant::now();
                 if let Some((mesh, material)) = main_resources.meshes.get(&low_res_renderer.mesh).zip(main_resources.materials.get(&low_res_renderer.material)) {
                     target.clear_color_and_depth((0.3, 0.6, 0.1, 1.0), 1.0);
+                    let (width, height) = (640.0, 360.0);
+                    let proj = return_scene.camera().perspective;
+                    let far = 100.0;
+                    let near = 0.1;
+                    let focal_length_px = proj.y_axis.y * (height / 2.0);
                     target.draw(&mesh.vertices, &mesh.indices, &material.program, &uniform! {tex: return_scene.scene_tex.sampled().magnify_filter(MagnifySamplerFilter::Nearest)}, &material.draw_params).unwrap();
                 }
 
-                //println!("Draw to screen: {:.2?}", drawTimer.elapsed());
+                println!("Draw to screen: {:.2?}", drawTimer.elapsed());
                 target.finish().unwrap();
-                //println!("Finish: {:.2?}", drawTimer.elapsed());
+                println!("Finish: {:.2?}", drawTimer.elapsed());
                 frames = frames + 1.0;
-                //println!("After main: {:.2?}", mainTimer.elapsed());
-                //println!();
+                println!("After main: {:.2?}", mainTimer.elapsed());
+                println!();
             },
             _ => (),
             },

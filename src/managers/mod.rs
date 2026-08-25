@@ -1,4 +1,4 @@
-use std::collections::{HashMap, HashSet};
+use std::{any::Any, collections::{HashMap, HashSet, VecDeque}};
 
 use glium::{Display, Texture2d, glutin::surface::WindowSurface};
 
@@ -12,12 +12,8 @@ pub struct CreatorManager<'a>{
 }
 
 impl <'a> CreatorManager <'a> {
-    pub fn next_id(&self) -> usize{
-        self.scene.num_objects()
-    }
-    
-    pub fn add_object(&mut self, obj: WorldObject) -> usize{
-        self.scene.add_object(obj)
+    pub fn add_object(&mut self, build: impl FnOnce(ObjectId) -> SceneObject, updatable: bool) -> ObjectId{
+        self.scene.mut_objects().add(build, updatable)
     }
 
     pub fn new(scene: &'a mut Scene, display: &'a Display<WindowSurface>) -> Self {
@@ -25,20 +21,142 @@ impl <'a> CreatorManager <'a> {
     }
 }
 
+struct ObjectMem {
+    pub object: Option<SceneObject>,
+    pub generation: u32,
+}
+
+impl ObjectMem {
+    pub fn new(object: Option<SceneObject>,generation: u32) -> ObjectMem {
+        ObjectMem { object, generation }
+    }
+}
+
 pub struct ObjectManager {
-    objects: Vec<SceneObject>,
-    world_objects: HashSet<ObjectId>,
-    updatable_objects: HashSet<ObjectId>,
+    objects: Vec<ObjectMem>,
+    world_objects: Vec<ObjectId>, // Possible change to vec
+    updatable_objects: Vec<ObjectId>, // Possible change to vec
     octree: f32,
+    available_space: Vec<usize>,
 }
 
 impl ObjectManager {
     pub fn new() -> ObjectManager {
-        ObjectManager { objects: Vec::new(), world_objects: HashSet::new(), updatable_objects: HashSet::new(), octree: 0.0 }
+        ObjectManager { objects: Vec::new(), world_objects: Vec::new(), updatable_objects: Vec::new(), octree: 0.0, available_space: Vec::new() }
     }
 
-    pub fn add_object() {
+    pub fn add(&mut self, build: impl FnOnce(ObjectId) -> SceneObject, updatable: bool) -> ObjectId{
+        let id = self.allocate_id();
+        let object = build(id);
+        self.add_object(object, updatable)
+    }
+
+    fn allocate_id(&mut self) -> ObjectId {
+        if let Some(index) = self.available_space.pop() {
+            let data = &self.objects[index];
+            ObjectId::new_gen(index, data.generation)
+        } else {
+            ObjectId::new(self.objects.len())
+        }
+    }
+
+    fn add_object(&mut self, object: SceneObject, updatable: bool,) -> ObjectId {
+        let id = object.id();
+        if updatable {
+            self.updatable_objects.push(id);
+        }
         
+        match &object {
+            SceneObject::World(world_object) => {
+
+                self.world_objects.push(id);
+            },
+            SceneObject::Spline(spline_object) => (),
+        }
+
+        match self.objects.get_mut(id.index) {
+            Some(slot) => {
+                assert!(slot.object.is_none());
+                slot.generation += 1;
+                slot.object = Some(object);
+            },
+            None => {
+                assert!(self.objects.len() == id.index);
+                self.objects.push(ObjectMem::new(Some(object), 0))
+            },
+        }
+
+        id
+    }
+
+    pub fn remove_object(&mut self, object: ObjectId) -> Option<SceneObject> {
+        let slot = self.objects.get_mut(object.index)?;
+        if slot.generation != object.generation {
+            return None; // stale
+        }
+        let removed = slot.object.take()?;
+        slot.generation = slot.generation.wrapping_add(1); // invalidate old id
+
+        self.world_objects.retain(|&existing| existing != object);
+        self.updatable_objects.retain(|&existing| existing != object);
+        self.available_space.push(object.index);
+
+        Some(removed)
+    }
+
+
+    fn has_space(&self) -> bool {
+        self.available_space.len() != 0
+    }
+
+    pub fn objects(&self) -> impl Iterator<Item = &SceneObject> {
+        self.objects.iter().filter_map(|slot| slot.object.as_ref())
+    }
+
+    pub fn mut_objects(&mut self) -> impl Iterator<Item = &mut SceneObject> {
+        self.objects.iter_mut().filter_map(|slot| slot.object.as_mut())
+    }
+
+    pub fn updatable_objects(&self) -> impl Iterator<Item = &SceneObject> {
+        self.updatable_objects.iter().filter_map(|&id| self.get(id))
+    }
+
+    pub fn world_objects(&self) -> impl Iterator<Item = &WorldObject> {
+        self.world_objects.iter().filter_map(|&id| self.get(id)?.as_world())
+    }
+
+    pub fn updatable_ids(&self) -> Vec<ObjectId> {
+        self.updatable_objects.clone()
+    }
+
+
+
+    pub fn get(&self, id: ObjectId) -> Option<&SceneObject> {
+        let slot = self.objects.get(id.index)?;
+        if slot.generation != id.generation {
+            return None;
+        }
+        slot.object.as_ref()
+    }
+
+    pub fn get_mut(&mut self, id: ObjectId) -> Option<&mut SceneObject> {
+        let slot = self.objects.get_mut(id.index)?;
+        if slot.generation != id.generation {
+            return None;
+        }
+        slot.object.as_mut()
+    }
+
+    pub fn num_objects(&self) -> usize {
+        self.objects.len()
+    }
+
+    pub fn num_world_objects(&self) -> usize {
+        self.world_objects.len()
+    }
+
+    pub fn num_updatable(&self) -> usize {
+        self.updatable_objects.len()
     }
 }
 

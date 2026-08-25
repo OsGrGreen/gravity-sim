@@ -1,4 +1,5 @@
 use core::f32;
+use std::time::Instant;
 
 use glam::Vec3;
 use glium::{Display, Surface, Texture2d, glutin::surface::WindowSurface, texture::DepthTexture2d};
@@ -7,7 +8,7 @@ use objects::{physics::{PhysicsObject}, WorldObject};
 use rand::Rng;
 use winit::{event::MouseButton, window::Window};
 
-use crate::{managers::{RenderManager, handles}, rendering::{RenderContext, render::{Renderer}, render_camera::RenderCamera}, scene::{objects::{ObjectId, SceneObject, SceneObjectBehaviour, physics::{bodies::{RigidBody, StaticBody}, controllers::{self, Controller, gravity_controller::Gravity, movement_controller::{Movement, QuatMover}, path_controller::{Path}}}, renderable::MeshRenderer, transform::Transform}, renders::TemporaryRender}, spline::Spline, util::{create_fbo, create_render_textures, input_handler::{InputHandler}, load_texture}};
+use crate::{managers::{ObjectManager, RenderManager, handles}, rendering::{RenderContext, render::Renderer, render_camera::RenderCamera}, scene::{objects::{ObjectId, SceneObject, SceneObjectBehaviour, physics::{bodies::{RigidBody, StaticBody}, controllers::{self, Controller, gravity_controller::Gravity, movement_controller::{Movement, QuatMover}, path_controller::Path}}, renderable::MeshRenderer, transform::Transform}, renders::TemporaryRender}, spline::Spline, util::{create_fbo, create_render_textures, input_handler::InputHandler, load_texture}};
 
 pub mod bezier_surface;
 pub mod objects;
@@ -17,7 +18,7 @@ pub mod renders;
 
 pub struct SceneContent {
     time: f32,
-    world_objects: Vec<SceneObject>,
+    objects: ObjectManager,
     lights: Vec<Light>,
     pub camera: RenderCamera,
     render_objects: Vec<TemporaryRender>
@@ -27,15 +28,15 @@ pub struct Scene{
     pub render_manager: RenderManager,
     controllers: Vec<Box<dyn Controller>>,
     pub scene_tex: Texture2d,
-    scene_depth: DepthTexture2d,
+    pub scene_depth: DepthTexture2d,
 }
 
 impl Scene{
     pub fn new(camera: RenderCamera, lights: Option<Vec<Light>>, display: &Display<WindowSurface>, size: (u32,u32)) -> Scene{
         let (world_texture, depth_world_texture) = create_render_textures(&display,size.0, size.1);
         let gravity = Gravity::new(6.67e-5);
-        let render_manager = RenderManager::new();
-        Scene { content: SceneContent { time: 0.0, world_objects: Vec::new(), lights: lights.unwrap_or(Vec::new()), camera, render_objects: Vec::new()}, render_manager, controllers: vec![Box::new(gravity)], scene_tex: world_texture, scene_depth: depth_world_texture}
+        let render_manager: RenderManager = RenderManager::new();
+        Scene { content: SceneContent { time: 0.0, objects: ObjectManager::new(), lights: lights.unwrap_or(Vec::new()), camera, render_objects: Vec::new()}, render_manager, controllers: vec![Box::new(gravity)], scene_tex: world_texture, scene_depth: depth_world_texture}
     }
 
     pub fn draw(&mut self, display: &Display<WindowSurface>){
@@ -47,7 +48,7 @@ impl Scene{
             time: 0.0,
         };
 
-        for object in &mut self.content.world_objects{
+        for object in &mut self.content.objects.mut_objects(){
             object.draw(&mut context, &mut self.render_manager);
         }
 
@@ -70,24 +71,23 @@ impl Scene{
         self.render_manager.renderers.get(name)
     }
 
-    pub fn new_object(&mut self, object_name: &str, render_name: &str, display: &Display<WindowSurface>,vertex_data: &[u8], fragment_data: &[u8], obj_data: &[u8]) -> usize{
+    pub fn new_object(&mut self, object_name: &str, render_name: &str, display: &Display<WindowSurface>,vertex_data: &[u8], fragment_data: &[u8], obj_data: &[u8]) -> ObjectId {
         let renderer = Renderer::init(&mut self.render_manager, display, vertex_data, fragment_data, obj_data, None).unwrap();
         self.render_manager.add_renderer(render_name.to_string(), renderer);
-        let obj = WorldObject::new(self.content.world_objects.len(), Transform::new(),Some(Box::new(MeshRenderer::new(render_name.to_string()))), PhysicsObject::RigidBody(RigidBody::new(1.0)), None);
-        self.content.world_objects.push(SceneObject::World(obj));
-        return self.content.world_objects.len() - 1;
+        let create_object = |id| {
+            let obj = WorldObject::new(id, Transform::new(),Some(Box::new(MeshRenderer::new(render_name.to_string()))), PhysicsObject::RigidBody(RigidBody::new(1.0)), None);
+            SceneObject::World(obj)
+        };
+        self.content.objects.add(create_object, true)
     }
     
 
-    pub fn new_object_instance(&mut self, object_name: &str,render_name: &str) -> usize{
-        let obj = WorldObject::new(self.content.world_objects.len(), Transform::new(),Some(Box::new(MeshRenderer::new(render_name.to_string()))), PhysicsObject::RigidBody(RigidBody::new(1.0)), None);
-        self.content.world_objects.push(SceneObject::World(obj));
-        return self.content.world_objects.len() - 1;
-    }
-    
-    pub fn add_object(&mut self, obj: WorldObject) -> usize{
-        self.content.world_objects.push(SceneObject::World(obj));
-        return self.content.world_objects.len() - 1;
+    pub fn new_object_instance(&mut self, object_name: &str,render_name: &str) -> ObjectId{
+        let build = |id| {
+            let obj = WorldObject::new(id, Transform::new(),Some(Box::new(MeshRenderer::new(render_name.to_string()))), PhysicsObject::RigidBody(RigidBody::new(1.0)), None);
+            SceneObject::World(obj)
+        };
+        self.content.objects.add(build, true)
     }
 
     pub fn add_texture(&mut self, display: &Display<WindowSurface>, tex_data: &[u8]) -> handles::TextureHandle{
@@ -98,10 +98,8 @@ impl Scene{
         //println!("mouse pos: {}", input_handler.pos());
         if self.content.camera.is_following() {
             //println!("Following {} at {}", self.content.camera.get_following().index, self.content.world_objects[self.content.camera.get_following().index].transform().position);
-            let object = &self.content.world_objects[self.content.camera.get_following().index];
+            let object = &self.content.objects.get(self.content.camera.get_following()).expect("Follow object does not exist");
             self.content.camera.update_follow(object.transform().position, object.transform().rotation);
-
-            
         } else {
             if input_handler.is_mouse_pressed(MouseButton::Left){
                 let mut yaw = 0.0;
@@ -120,15 +118,24 @@ impl Scene{
 
     pub fn update_physics(&mut self, dt: f32, input: &InputHandler){
         self.content.time += 1.0;
+        let mut i = 0;
         for controller in self.controllers.iter_mut(){
+            let new_time = Instant::now();
             controller.update(&mut self.content, input);
+            println!("Controller {}: {:.2?}", i, new_time.elapsed());
+            i += 1;
         }
-        
-        for obj in &mut self.content.world_objects{
-            obj.update_physics(dt);
-        }   
+
+        for id in self.content.objects.updatable_ids() {
+            if let Some(obj) = self.content.objects.get_mut(id) {
+                let new_time = Instant::now();
+                obj.update_physics(dt);
+                println!("Object {}: {:.2?}", obj.id(), new_time.elapsed());
+            }
+        }
     }
 
+    /* 
     pub fn init_flight_scene(window: &Window, display: &Display<WindowSurface>, size: (u32,u32)) -> Scene{
 
         let mut render_manager = RenderManager::new();
@@ -154,6 +161,7 @@ impl Scene{
         render_manager.add_renderer("light".to_string(), light_source_renderer);
         render_manager.add_renderer("skybox".to_string(), skybox_renderer);
         
+
         let mut player = WorldObject::new(0,  Transform::new(), Some(Box::new(MeshRenderer::new("player".to_string()))), PhysicsObject::RigidBody(RigidBody::new(1.0)), None);
         player.data.transform.translate(Vec3::new(1.0, 0.0, 5.0));
 
@@ -255,22 +263,27 @@ impl Scene{
         
         return return_scene;
     }
+    */
 
-    pub fn objects(&mut self) -> &Vec<SceneObject> {
-        &self.content.world_objects
+    pub fn camera(&self) -> &RenderCamera {
+        &self.content.camera
     }
 
-    pub fn num_objects(&self) -> usize {
-        self.content.world_objects.len()
+    pub fn objects(&self) -> &ObjectManager {
+        &self.content.objects
+    }
+
+    pub fn mut_objects(&mut self) -> &mut ObjectManager {
+        &mut self.content.objects
     }
 }
 
 impl SceneContent{
-    pub fn objects(&mut self) -> &mut Vec<SceneObject> {
-        &mut self.world_objects
+    pub fn objects(&mut self) -> &mut ObjectManager {
+        &mut self.objects
     }
 
-    pub fn read_objects(&self) -> &Vec<SceneObject> {
-        &self.world_objects
+    pub fn read_objects(&self) -> &ObjectManager {
+        &self.objects
     }
 }

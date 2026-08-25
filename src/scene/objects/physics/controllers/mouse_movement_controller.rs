@@ -29,7 +29,7 @@ impl Controller for MouseDragController {
 
 
         for id in &self.ids {
-            let object = &mut objects[id.index];
+            let object = scene.objects().get_mut(*id).expect("Object did not exist");
             if let Some(intersection) =  ray_plane_intersection(
                 ray_origin,
                 ray_direction,
@@ -41,13 +41,13 @@ impl Controller for MouseDragController {
         };
     }
 
-    fn add(&mut self, objects: Vec<&crate::scene::objects::WorldObject>) {
+    fn add(&mut self, objects: Vec<&ObjectId>) {
         for obj in objects{
-            self.ids.push(obj.data.id.clone());
+            self.ids.push(*obj);
         }
     }
-
-    fn add_single(&mut self, object: &crate::scene::objects::WorldObject) {
-        self.ids.push(object.data.id);
+    
+    fn add_single(&mut self, object: &ObjectId) {
+        self.ids.push(*object);
     }
 }

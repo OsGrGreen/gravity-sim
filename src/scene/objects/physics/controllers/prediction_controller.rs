@@ -30,18 +30,12 @@ where T: Controller
     }
 
     fn update_gravity(&self, target_object: &WorldObject, current_transform: &Transform, scene: &SceneContent, previous: PhysicsObject) -> PhysicsObject {
-        let objects: Vec<&WorldObject> = scene.read_objects().iter().filter_map(|obj| {
-            match obj {
-                SceneObject::World(obj) => Some(obj),
-                SceneObject::Spline(_) => None,
-            }
-        }).collect();
-
         let g = 1.0;
         let mut physics = previous;
         let predicted_pos = current_transform.position; 
 
-        for obj2 in objects {
+
+        for obj2 in scene.objects.world_objects() {
             if obj2.data.id == target_object.data.id {
                 continue;
             }
@@ -61,9 +55,9 @@ where T: Controller
         let mut new_renders = Vec::new();
         let objects = scene.read_objects();
         for id in &self.ids {
-            let object = &objects[id.index];
+            let object = scene.objects.get(*id);
             match object {
-                SceneObject::World(world_object) => {
+                Some(SceneObject::World(world_object)) => {
                     let mut prev_state = PredictionState{
                         transform: world_object.data.transform,
                         physics: world_object.physics.clone(),
@@ -82,20 +76,20 @@ where T: Controller
                         prev_state = new_state;
                     }
                 },
-                SceneObject::Spline(_) => continue,
+                _ => continue,
             }
 
         };
         scene.render_objects.extend(new_renders);
     }
 
-    fn add(&mut self, objects: Vec<&crate::scene::objects::WorldObject>) {
+    fn add(&mut self, objects: Vec<&ObjectId>) {
         for obj in objects{
-            self.ids.push(obj.data.id.clone());
+            self.ids.push(*obj);
         }
     }
-
-    fn add_single(&mut self, object: &crate::scene::objects::WorldObject) {
-        self.ids.push(object.data.id);
+    
+    fn add_single(&mut self, object: &ObjectId) {
+        self.ids.push(*object);
     }
 }

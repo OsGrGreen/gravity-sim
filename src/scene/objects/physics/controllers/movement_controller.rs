@@ -9,7 +9,7 @@ use crate::{scene::{SceneContent, objects::{ObjectId, SceneObject, SceneObjectBe
 use super::Controller;
 
 pub trait MovementType {
-    fn change_movement(&mut self, world_object: ObjectId, scene: &mut SceneContent, input: &InputHandler);
+    fn change_movement(&mut self, world_object: &ObjectId, scene: &mut SceneContent, input: &InputHandler);
 }
 
 
@@ -27,18 +27,18 @@ impl<T: MovementType> Movement<T>{
 impl<T: MovementType>  Controller for Movement<T>{
     fn update(&mut self, scene: &mut SceneContent, input: &InputHandler) {
         for id in &self.ids {
-            self.mover.change_movement(*id, scene, input);
+            self.mover.change_movement(id, scene, input);
         };
     }
     
-    fn add(&mut self, objects: Vec<&crate::scene::objects::WorldObject>) {
+    fn add(&mut self, objects: Vec<&ObjectId>) {
         for obj in objects{
-            self.ids.push(obj.data.id.clone());
+            self.ids.push(*obj);
         }
     }
-
-    fn add_single(&mut self, object: &crate::scene::objects::WorldObject) {
-        self.ids.push(object.data.id);
+    
+    fn add_single(&mut self, object: &ObjectId) {
+        self.ids.push(*object);
     }
 }
 
@@ -78,10 +78,10 @@ impl SimpleMover {
 
 
 impl MovementType for SimpleMover {
-    fn change_movement(&mut self, world_object: ObjectId, scene: &mut SceneContent, input: &InputHandler) {
-        let world_object = &mut scene.objects()[world_object.index];
-        match world_object {
-            SceneObject::World(world_object) => self.move_world(world_object, input),
+    fn change_movement(&mut self, world_object: &ObjectId, scene: &mut SceneContent, input: &InputHandler) {
+        let object = scene.objects().get_mut(*world_object);
+        match object {
+            Some(SceneObject::World(mut_obj)) => self.move_world(mut_obj, input),
             _ => (),
         }
     }
@@ -97,13 +97,13 @@ impl QuatMover{
         QuatMover {thrust: 1.0, orientation:Quat::from_rotation_x(0.0)*Quat::from_rotation_y(0.0)*Quat::from_rotation_z(0.0)} 
     }
 
-    fn move_world(&mut self, object_id: ObjectId, scene: &mut SceneContent, input: &InputHandler) {
+    fn move_world(&mut self, object_id: &ObjectId, scene: &mut SceneContent, input: &InputHandler) {
         // Read user-input
         let new_renders: Vec<TemporaryRender> = Vec::new();
 
-        let object = &mut scene.objects()[object_id.index];
+        let object = scene.objects().get_mut(*object_id);
         match object {
-            SceneObject::World(world_object) => {
+            Some(SceneObject::World(world_object)) => {
 
 
                 let new_thrust = input.get_movement().y; 
@@ -152,7 +152,7 @@ impl QuatMover{
 }
 
 impl MovementType for QuatMover {
-    fn change_movement(&mut self, object_id: ObjectId, scene: &mut SceneContent, input: &InputHandler) {
+    fn change_movement(&mut self, object_id: &ObjectId, scene: &mut SceneContent, input: &InputHandler) {
         self.move_world(object_id, scene, input);
     }
 }

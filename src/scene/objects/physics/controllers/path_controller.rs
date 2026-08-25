@@ -19,9 +19,8 @@ impl Path{
 
 impl Controller for Path{
     fn update(&mut self, scene: &mut SceneContent, _: &InputHandler) {
-        let objects = scene.objects();
         for id in &self.ids {
-            let obj = &mut objects[id.index];
+            let obj = scene.objects().get_mut(*id).expect("Object did not exist");
             let new_pos = self.spline.evaluate(self.t);
             let current_pos = obj.transform().position;
             obj.data_mut().transform.set_position(new_pos);
@@ -33,13 +32,13 @@ impl Controller for Path{
         };
     }
 
-    fn add(&mut self, objects: Vec<&crate::scene::objects::WorldObject>) {
+    fn add(&mut self, objects: Vec<&ObjectId>) {
         for obj in objects{
-            self.ids.push(obj.data.id.clone());
+            self.ids.push(*obj);
         }
     }
-
-    fn add_single(&mut self, object: &crate::scene::objects::WorldObject) {
-        self.ids.push(object.data.id);
+    
+    fn add_single(&mut self, object: &ObjectId) {
+        self.ids.push(*object);
     }
 }

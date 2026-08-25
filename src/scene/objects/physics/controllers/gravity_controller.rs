@@ -1,4 +1,6 @@
 
+use std::time::Instant;
+
 use glam::{Mat4, Vec3};
 
 use crate::{scene::{SceneContent, objects::{ObjectId, SceneObject, WorldObject}}, util::{input_handler::InputHandler, ray_library::{mouse_ray, ray_plane_intersection}}};
@@ -23,15 +25,7 @@ impl PlayerGravity{
 
 impl Controller for PlayerGravity {
 fn update(&mut self, scene: &mut SceneContent, input: &InputHandler) {
-        let mut objects: Vec<&mut WorldObject> = scene.objects().iter_mut().filter_map(|obj| {
-            match obj {
-                SceneObject::World(obj) => Some(obj),
-                SceneObject::Spline(_) => None,
-            }
-        }).collect();
-
         if !self.activated {
-            println!("Big slay");
             let camera_mat = &scene.camera.getMatrix();
             let camera_view = Mat4::from_cols_array_2d(camera_mat);
             let camera_projection = scene.camera.perspective;
@@ -39,7 +33,7 @@ fn update(&mut self, scene: &mut SceneContent, input: &InputHandler) {
             if input.is_pressed(winit::keyboard::KeyCode::Enter) {
                 self.activated = true;
                 for id in &self.ids {
-                    let object = &mut scene.objects()[id.index];
+                    let object = scene.objects().get_mut(*id).expect("Object did not exist");
                     match object {
                         SceneObject::World(world_object) => world_object.physics.activate(),
                         SceneObject::Spline(_) => (),
@@ -47,14 +41,10 @@ fn update(&mut self, scene: &mut SceneContent, input: &InputHandler) {
                 }
             }
 
-            let objects = scene.objects();
-
-            
-
             let (ray_origin, ray_direction) =
             mouse_ray(input.pos(), camera_projection, camera_view);
             for id in &self.ids {
-                    let object = &mut objects[id.index];
+                    let object = scene.objects().get_mut(*id).expect("Object did not exist");
                     match object {
                         SceneObject::World(world_object) => {
                             if let Some(intersection) =  ray_plane_intersection(
@@ -72,35 +62,42 @@ fn update(&mut self, scene: &mut SceneContent, input: &InputHandler) {
                     }
                 };
         }else {
-            for i in 0..objects.len() {
-                let (before, after) = objects.split_at_mut(i);
-                let (obj1, after) = after.split_first_mut().unwrap(); // Get obj1 from after
-                if self.ids.contains(&obj1.data.id){
-                    for obj2 in before.iter().chain(after.iter()) {
-                        if obj2.physics.mass() != 0.0 {
-                            let (dir, distance) = obj1.distance(obj2);
-                            let force = self.G*(obj1.physics.mass()*obj2.physics.mass())/(distance*distance);
-                            obj1.physics.add_force(dir.normalize()*force);
-                            //println!("World object real state during simulation: ({:?}, {:?})", obj1.data.transform, obj1.physics);
-                            //Collision
-                            if obj1.collides(obj2){
+            let new_time = Instant::now();
+            for id in &self.ids {
+                let mut total_force = Vec3::ZERO;
+
+                let obj = scene.objects.get(*id).expect("Object did not exist");
+                let object = match obj {
+                    SceneObject::World(o) => o,
+                    SceneObject::Spline(_) => panic!("Is not world_object"),
+                };
+                
+                for world_object in scene.objects.world_objects() {
+                    if world_object.data.id != object.data.id {
+                        let (dir, distance) = object.distance(world_object);
+                        let force = self.G*(object.physics.mass()*world_object.physics.mass())/(distance*distance);
+                        
+                        total_force += dir.normalize() * force;
+                        if object.collides(world_object){
                                 //println!("Collision between {:?} and {:?}", obj1,obj2);
-                            }
-                        } 
+                        }
                     }
                 }
-            }
+                if let Some(SceneObject::World(object)) = scene.objects().get_mut(*id) {
+                    object.physics.add_force(total_force);
+                }
+            }   
         }
     }
     
-    fn add(&mut self, objects: Vec<&crate::scene::objects::WorldObject>) {
+    fn add(&mut self, objects: Vec<&ObjectId>) {
         for obj in objects{
-            self.ids.push(obj.data.id);
+            self.ids.push(*obj);
         }
     }
     
-    fn add_single(&mut self, object: &crate::scene::objects::WorldObject) {
-        self.ids.push(object.data.id);
+    fn add_single(&mut self, object: &ObjectId) {
+        self.ids.push(*object);
     }
 }
 
@@ -118,37 +115,39 @@ impl Gravity{
 
 impl Controller for Gravity{
     fn update(&mut self, scene: &mut SceneContent, _: &InputHandler) {
-        let mut objects: Vec<&mut WorldObject> = scene.objects().iter_mut().filter_map(|obj| {
-            match obj {
-                SceneObject::World(obj) => Some(obj),
-                SceneObject::Spline(_) => None,
-            }
-        }).collect();
+        for id in &self.ids {
+            let mut total_force = Vec3::ZERO;
 
-        for i in 0..objects.len() {
-            let (before, after) = objects.split_at_mut(i);
-            let (obj1, after) = after.split_first_mut().unwrap(); // Get obj1 from after
-            if self.ids.contains(&obj1.data.id){
-                for obj2 in before.iter().chain(after.iter()) {
-                    let (dir, distance) = obj1.distance(obj2);
-                    let force = self.G*(obj1.physics.mass()*obj2.physics.mass())/(distance*distance);
-                    obj1.physics.add_force(dir.normalize()*force);
-                    //Collision
-                    if obj1.collides(obj2){
-                        //println!("Collision between {:?} and {:?}", obj1,obj2);
+            let obj = scene.objects.get(*id).expect("Object did not exist");
+            let object = match obj {
+                SceneObject::World(o) => o,
+                SceneObject::Spline(_) => panic!("Is not world_object"),
+            };
+                
+            for world_object in scene.objects.world_objects() {
+                if world_object.data.id != object.data.id {
+                    let (dir, distance) = object.distance(world_object);
+                    let force = self.G*(object.physics.mass()*world_object.physics.mass())/(distance*distance);
+                        
+                    total_force += dir.normalize() * force;
+                    if object.collides(world_object){
+                            //println!("Collision between {:?} and {:?}", obj1,obj2);
                     }
                 }
             }
+            if let Some(SceneObject::World(object)) = scene.objects().get_mut(*id) {
+                object.physics.add_force(total_force);
+            }
         }
     }
     
-    fn add(&mut self, objects: Vec<&crate::scene::objects::WorldObject>) {
+    fn add(&mut self, objects: Vec<&ObjectId>) {
         for obj in objects{
-            self.ids.push(obj.data.id);
+            self.ids.push(*obj);
         }
     }
     
-    fn add_single(&mut self, object: &crate::scene::objects::WorldObject) {
-        self.ids.push(object.data.id);
+    fn add_single(&mut self, object: &ObjectId) {
+        self.ids.push(*object);
     }
 }

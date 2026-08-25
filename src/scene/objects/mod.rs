@@ -56,6 +56,20 @@ impl SceneObject {
     pub fn distance_point(&self, other: Vec3) -> (Vec3,f32){
         (other-self.transform().position,self.transform().position.distance(other))
     }
+
+    pub fn as_world(&self) -> Option<&WorldObject> {
+        match self {
+            SceneObject::World(o) => Some(o),
+            _ => None,
+        }
+    }
+
+    pub fn is_world(&self) -> bool {
+        match self {
+            SceneObject::World(_) => true,
+            _ => false,
+        }
+    }
 }
 
 pub trait SceneObjectBehaviour {
@@ -102,11 +116,22 @@ impl SceneObjectBehaviour for SplineObject {
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub struct ObjectId {
     pub index: usize,
+    pub generation: u32,
 }
 
 impl ObjectId{
     pub fn new(index: usize) -> ObjectId{
-        return ObjectId { index:index }
+        ObjectId { index, generation:0 }
+    }
+
+    pub fn new_gen(index: usize, generation: u32) -> ObjectId {
+        ObjectId { index, generation }
+    }
+}
+
+impl std::fmt::Display for ObjectId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "(id: {}, gen: {})", self.index, self.generation)
     }
 }
 
@@ -122,9 +147,9 @@ pub struct SplineObject {
 }
 
 impl SplineObject {
-    pub fn new(index: usize, spline: Spline,transform: Transform, render: Option<Box<dyn Renderable>>) -> SplineObject{
+    pub fn new(id: ObjectId, spline: Spline,transform: Transform, render: Option<Box<dyn Renderable>>) -> SplineObject{
         let data = ObjectData{
-            id: ObjectId { index }, transform, render,
+            id, transform, render,
         };
         let wo = SplineObject{
             data,
@@ -153,9 +178,9 @@ pub struct WorldObject{
 }
 
 impl WorldObject{
-    pub fn new(index: usize, transform: Transform, render: Option<Box<dyn Renderable>>, physics: PhysicsObject, collider: Option<Collider>) -> WorldObject{
+    pub fn new(id: ObjectId, transform: Transform, render: Option<Box<dyn Renderable>>, physics: PhysicsObject, collider: Option<Collider>) -> WorldObject{
         let data = ObjectData{
-            id: ObjectId { index }, transform, render,
+            id, transform, render,
         };
         let wo = WorldObject{
             data,
@@ -165,7 +190,7 @@ impl WorldObject{
         return wo;
     } 
 
-   pub fn draw(&mut self, context: &mut RenderContext, asset_manager: &RenderManager){
+   pub fn draw(&self, context: &mut RenderContext, asset_manager: &RenderManager){
         if let Some(renderable) = &self.data.render {
             renderable.render(&self.data.transform, context, asset_manager);
         }

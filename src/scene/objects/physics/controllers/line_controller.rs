@@ -25,18 +25,18 @@ impl Controller for LineController {
         let objects = scene.objects();
 
         for line in &self.ids {
-            let pos1 = match objects.get(line.line_points[0].index) {
+            let pos1 = match objects.get(line.line_points[0]) {
                 Some(obj) => obj.transform().position,
                 None => continue,
             };
 
-            let pos2 = match objects.get(line.line_points[1].index) {
+            let pos2 = match objects.get(line.line_points[1]) {
                 Some(obj) => obj.transform().position,
                 None => continue,
             };
 
-            let line_object = match &mut objects[line.line.index] {
-                objects::SceneObject::Spline(line_object) => line_object,
+            let line_object = match objects.get_mut(line.line) {
+                Some(objects::SceneObject::Spline(line_object)) => line_object,
                 _ => continue,
             };
 
@@ -49,11 +49,9 @@ impl Controller for LineController {
         }
     }
 
-    fn add(&mut self, objects: Vec<&WorldObject>) {
-        todo!()
+    fn add(&mut self, objects: Vec<&ObjectId>) {
     }
-
-    fn add_single(&mut self, object: &WorldObject) {
-        return;
+    
+    fn add_single(&mut self, object: &ObjectId) {
     }
 }

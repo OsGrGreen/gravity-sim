@@ -1,7 +1,7 @@
 use glam::Vec3;
 use glium::PolygonMode;
 
-use crate::{managers::CreatorManager, rendering::render::{Renderer, Vertex}, scene::objects::{ObjectId, WorldObject, physics::{PhysicsObject}, renderable::MeshRenderer, transform::Transform}, util::read_shader};
+use crate::{managers::CreatorManager, rendering::render::{Renderer, Vertex}, scene::objects::{ObjectId, SceneObject, WorldObject, physics::PhysicsObject, renderable::MeshRenderer, transform::Transform}, util::read_shader};
 
 
 pub struct GridContext {
@@ -75,7 +75,6 @@ where
     let mut vertices: Vec<Vertex> = Vec::new();
     let mut indices: Vec<u16> = Vec::new();
     let transform = Transform::new_from_pos(center);
-    let id = creator.next_id();
     let physics = PhysicsObject::Nothing();
     let collider = None;
 
@@ -140,16 +139,17 @@ where
         creator.scene.render_manager.add_renderer("grid".to_string(), renderer);
     }
 
-    let object = WorldObject::new(id, transform, Some(Box::new(MeshRenderer::new("grid".to_string()))), physics, collider);
-    creator.add_object(object);
-    ObjectId::new(id)
+    let build = |id| {
+        let object = WorldObject::new(id, transform, Some(Box::new(MeshRenderer::new("grid".to_string()))), physics, collider);
+        SceneObject::World(object)
+    };
+    creator.add_object(build, true)
 }
 
 pub fn create_grid(center: Vec3, normal: Vec3, width: usize, height: usize, cell_size: f32, creator: &mut CreatorManager) -> ObjectId {
     let mut vertices: Vec<Vertex> = Vec::new();
     let mut indices: Vec<u16> = Vec::new();
     let transform = Transform::new_from_pos(center);
-    let id = creator.next_id();
     let physics = PhysicsObject::Nothing();
     let collider = None;
     
@@ -216,9 +216,11 @@ pub fn create_grid(center: Vec3, normal: Vec3, width: usize, height: usize, cell
         creator.scene.render_manager.add_renderer("grid".to_string(), renderer);
     }
 
-    let object = WorldObject::new(id, transform, Some(Box::new(MeshRenderer::new("grid".to_string()))), physics, collider);
-    creator.add_object(object);
-    ObjectId::new(id)
+    let build = |id| {
+        let object = WorldObject::new(id, transform, Some(Box::new(MeshRenderer::new("grid".to_string()))), physics, collider);
+        SceneObject::World(object)
+    };
+    creator.add_object(build, true)
 }
 
 

@@ -44,8 +44,8 @@ impl RenderCamera{
         return self.following.unwrap()
     }
 
-    pub fn set_following(&mut self, id: ObjectId){
-        self.following = Some(id);
+    pub fn set_following(&mut self, id: &ObjectId){
+        self.following = Some(*id);
     }
 
     pub fn is_following(&self) -> bool{
